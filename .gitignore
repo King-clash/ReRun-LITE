@@ -1,0 +1,42 @@
+# Build output
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+
+# User data and secrets - never commit
+config.yaml
+license.json
+discord_board.json
+installs.json
+signing_key*.txt
+*signing_key*
+issued_keys.csv
+stats.json
+history/
+debug/
+crash.log
+*.log
+crest_log.jsonl
+crest_shots/
+units/
+data/
+accounts/
+backups/
+screenshots/
+*.db
+*.sqlite
+updates_site/
+builds.jsonl
+
+# Only the one screenshot the tests need
+tests/fixtures/*
+!tests/fixtures/home.png
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+BUILDS.md

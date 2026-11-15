@@ -1,0 +1,11 @@
+# Example custom routine. Custom routines appear in the Script list as
+# "Custom: <name>". See routines/README.md for every step type.
+name: Tap through results
+description: Taps OK / Next until the quest page is back, then stops.
+
+steps:
+  - tap_until:
+      taps: [ok_button, small_next_button]
+      until: solo_quest_button
+      timeout: 120
+  - log: Back on the quest page

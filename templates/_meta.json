@@ -1,0 +1,1340 @@
+{
+  "solo_quest_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 255,
+    "h": 280,
+    "source": "restart"
+  },
+  "challenge_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 119,
+    "h": 24,
+    "source": "restart"
+  },
+  "past_party_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 65,
+    "h": 57,
+    "source": "restart"
+  },
+  "include_ai_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 28,
+    "h": 35,
+    "source": "restart"
+  },
+  "apply_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 82,
+    "h": 57,
+    "source": "restart"
+  },
+  "auto_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 50,
+    "h": 57,
+    "source": "restart"
+  },
+  "battle_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 140,
+    "h": 57,
+    "source": "restart"
+  },
+  "use_potions_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 63,
+    "h": 33,
+    "source": "restart"
+  },
+  "looping_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 218,
+    "h": 53,
+    "source": "restart"
+  },
+  "drop_info": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 143,
+    "h": 49,
+    "source": "restart"
+  },
+  "results_redeploy": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 118,
+    "h": 38,
+    "source": "restart"
+  },
+  "ok_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 61,
+    "h": 44,
+    "source": "restart"
+  },
+  "use_pot_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 51,
+    "h": 42,
+    "source": "restart"
+  },
+  "continue_box": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 162,
+    "h": 48,
+    "source": "restart"
+  },
+  "cancel_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 103,
+    "h": 46,
+    "source": "restart"
+  },
+  "restart_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 109,
+    "h": 39,
+    "source": "restart"
+  },
+  "small_next_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 109,
+    "h": 58,
+    "source": "restart"
+  },
+  "crest_icon_lv5plus": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 720,
+    "h": 135,
+    "source": "restart"
+  },
+  "equip_crest_screen": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 180,
+    "h": 46,
+    "source": "restart"
+  },
+  "crest_checkbox": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 55,
+    "h": 55,
+    "source": "restart"
+  },
+  "crest_icon_lv3": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 61,
+    "h": 38,
+    "source": "restart"
+  },
+  "crest_icon_lv3plus": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 61,
+    "h": 39,
+    "source": "restart"
+  },
+  "crest_icon_lv4": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 78,
+    "h": 49,
+    "source": "restart"
+  },
+  "crest_icon_lv4plus": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 79,
+    "h": 47,
+    "source": "restart"
+  },
+  "redeploy_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 154,
+    "h": 37,
+    "source": "restart"
+  },
+  "select_crest_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 102,
+    "h": 55,
+    "source": "restart"
+  },
+  "select_crest_ok2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 91,
+    "h": 52,
+    "source": "restart"
+  },
+  "crest_fragment": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 203,
+    "h": 47,
+    "source": "restart"
+  },
+  "crest_fragment_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 52,
+    "h": 49,
+    "source": "restart"
+  },
+  "quest_list": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 127,
+    "h": 41,
+    "source": "restart"
+  },
+  "exploring_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 213,
+    "h": 78,
+    "source": "restart"
+  },
+  "crest_palace_icon": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 91,
+    "h": 71,
+    "source": "restart"
+  },
+  "crest_palace_header": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 151,
+    "h": 56,
+    "source": "restart"
+  },
+  "unexpected_error": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 106,
+    "h": 53,
+    "source": "restart"
+  },
+  "xpop_up": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 37,
+    "h": 43,
+    "source": "restart"
+  },
+  "summon_later_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 344,
+    "h": 44,
+    "source": "restart"
+  },
+  "summon_close_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 114,
+    "h": 42,
+    "source": "restart"
+  },
+  "total_sign_in_bonus": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 270,
+    "h": 44,
+    "source": "restart"
+  },
+  "data_download_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 130,
+    "h": 38,
+    "source": "restart"
+  },
+  "game_start_screen": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 106,
+    "h": 59,
+    "source": "restart"
+  },
+  "mail_chest": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 65,
+    "h": 47,
+    "source": "restart"
+  },
+  "claim_all_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 121,
+    "h": 35,
+    "source": "restart"
+  },
+  "claim_all_button_dim": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 121,
+    "h": 35,
+    "source": "restart"
+  },
+  "claim_ok_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 131,
+    "h": 50,
+    "source": "restart"
+  },
+  "mail_close_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 96,
+    "h": 39,
+    "source": "restart"
+  },
+  "mail_empty_text": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 150,
+    "y": 360,
+    "w": 420,
+    "h": 44
+  },
+  "crest_palace_icon2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 92,
+    "h": 67,
+    "source": "restart"
+  },
+  "quest_list_entry": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 38,
+    "y": 664,
+    "w": 340,
+    "h": 34
+  },
+  "loops_label": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 390,
+    "y": 560,
+    "w": 126,
+    "h": 38
+  },
+  "loop_minus_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 80,
+    "y": 738,
+    "w": 52,
+    "h": 62
+  },
+  "loop_plus_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 596,
+    "y": 738,
+    "w": 52,
+    "h": 62
+  },
+  "auto_loop_title": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 215,
+    "y": 140,
+    "w": 290,
+    "h": 44
+  },
+  "loopdigit_0_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_1_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 7,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_2_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_3_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_4_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_4_1": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 15,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_5_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 13,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_5_1": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_6_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_7_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_8_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "loopdigit_9_0": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 14,
+    "h": 20,
+    "source": "restart"
+  },
+  "data_download_prompt": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 332,
+    "h": 28,
+    "source": "restart"
+  },
+  "potion_s": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 85,
+    "y": 450,
+    "w": 70,
+    "h": 70
+  },
+  "potion_m": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 85,
+    "y": 615,
+    "w": 70,
+    "h": 70
+  },
+  "potion_l": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 85,
+    "y": 779,
+    "w": 70,
+    "h": 70
+  },
+  "potion_cupcake": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 85,
+    "y": 944,
+    "w": 70,
+    "h": 70
+  },
+  "unexpected_error_text": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 160,
+    "y": 570,
+    "w": 400,
+    "h": 34
+  },
+  "ready_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 131,
+    "h": 65,
+    "source": "restart"
+  },
+  "next_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 76,
+    "h": 47,
+    "source": "restart"
+  },
+  "hyper_rare": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 558,
+    "h": 126,
+    "source": "restart"
+  },
+  "arena_home_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 208,
+    "h": 106,
+    "source": "restart"
+  },
+  "arena_find_battle": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 389,
+    "h": 153,
+    "source": "restart"
+  },
+  "arena_ready": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 322,
+    "h": 109,
+    "source": "restart"
+  },
+  "arena_battle_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 285,
+    "h": 89,
+    "source": "restart"
+  },
+  "arena_vs_screen": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 269,
+    "h": 301,
+    "source": "restart"
+  },
+  "arena_win_fighter": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 188,
+    "h": 227,
+    "source": "restart"
+  },
+  "arena_win_master": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 207,
+    "h": 220,
+    "source": "restart"
+  },
+  "arena_ok_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 128,
+    "h": 53,
+    "source": "restart"
+  },
+  "arena_no_orbs_cancel": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 176,
+    "h": 70,
+    "source": "restart"
+  },
+  "arena_restore_all": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 159,
+    "h": 50,
+    "source": "restart"
+  },
+  "arena_match_results": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 346,
+    "h": 76,
+    "source": "restart"
+  },
+  "raid_home": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 103,
+    "h": 61,
+    "source": "restart"
+  },
+  "raid_create": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 284,
+    "h": 43,
+    "source": "restart"
+  },
+  "raid_defeated": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 720,
+    "h": 168,
+    "source": "restart"
+  },
+  "raid_defeat_rewards": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 207,
+    "h": 46,
+    "source": "restart"
+  },
+  "raid_exchange_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 70,
+    "h": 48,
+    "source": "restart"
+  },
+  "raid_exchange_btn2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 143,
+    "h": 51,
+    "source": "restart"
+  },
+  "raid_expand_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 85,
+    "h": 39,
+    "source": "restart"
+  },
+  "raid_friend_only_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 149,
+    "h": 50,
+    "source": "restart"
+  },
+  "raid_green_sos": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 66,
+    "h": 49,
+    "source": "restart"
+  },
+  "raid_join": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 181,
+    "h": 53,
+    "source": "restart"
+  },
+  "raid_ok_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 48,
+    "h": 44,
+    "source": "restart"
+  },
+  "raid_orange_ok_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 52,
+    "h": 44,
+    "source": "restart"
+  },
+  "raid_orange_ok_btn2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 64,
+    "h": 47,
+    "source": "restart"
+  },
+  "raid_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 120,
+    "h": 60,
+    "source": "restart"
+  },
+  "raid_ticket_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 140,
+    "h": 43,
+    "source": "restart"
+  },
+  "raid_refresh_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 42,
+    "h": 55,
+    "source": "restart"
+  },
+  "raid_small_next": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 95,
+    "h": 49,
+    "source": "restart"
+  },
+  "raid_sos_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 52,
+    "h": 72,
+    "source": "restart"
+  },
+  "raid_sos_join_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 55,
+    "h": 49,
+    "source": "restart"
+  },
+  "raid_sos_tab": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 68,
+    "h": 42,
+    "source": "restart"
+  },
+  "raid_sos_tab2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 151,
+    "h": 50,
+    "source": "restart"
+  },
+  "raid_start": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 205,
+    "h": 55,
+    "source": "restart"
+  },
+  "raid_ticket_ok_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 50,
+    "h": 43,
+    "source": "restart"
+  },
+  "mines_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 185,
+    "h": 60,
+    "source": "restart"
+  },
+  "mines_abandon_quest_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 558,
+    "h": 80,
+    "source": "restart"
+  },
+  "mines_arcana_dialogue": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 187,
+    "h": 45,
+    "source": "restart"
+  },
+  "mines_area_change_dialogue": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 572,
+    "h": 75,
+    "source": "restart"
+  },
+  "mines_auto_advance_title": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 245,
+    "h": 45,
+    "source": "restart"
+  },
+  "mines_auto_checked": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 70,
+    "h": 75,
+    "source": "restart"
+  },
+  "mines_challenge_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 558,
+    "h": 78,
+    "source": "restart"
+  },
+  "mines_clear_time_failed": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 97,
+    "h": 27,
+    "source": "restart"
+  },
+  "mines_date_changed": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 250,
+    "h": 60,
+    "source": "restart"
+  },
+  "mines_go_mining": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 207,
+    "h": 55,
+    "source": "restart"
+  },
+  "mines_go_to_mines": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 267,
+    "h": 59,
+    "source": "restart"
+  },
+  "mines_close_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 140,
+    "h": 70,
+    "source": "restart"
+  },
+  "mines_no_support_unit": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 265,
+    "h": 55,
+    "source": "restart"
+  },
+  "mines_not_enough_energy": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 275,
+    "h": 60,
+    "source": "restart"
+  },
+  "mines_omega_change_boss": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 127,
+    "h": 42,
+    "source": "restart"
+  },
+  "mines_omega_dialogue": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 700,
+    "h": 125,
+    "source": "restart"
+  },
+  "mines_omega_proceed": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 127,
+    "h": 42,
+    "source": "restart"
+  },
+  "mines_omega_standby": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 127,
+    "h": 42,
+    "source": "restart"
+  },
+  "mines_select_support_unit_header": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 248,
+    "h": 44,
+    "source": "restart"
+  },
+  "gc_ap_standby_recover": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 110,
+    "h": 43,
+    "source": "restart"
+  },
+  "gc_area_select": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 130,
+    "h": 45,
+    "source": "restart"
+  },
+  "gc_auto_advance_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 203,
+    "h": 38,
+    "source": "restart"
+  },
+  "gc_auto_advance_btn2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 169,
+    "h": 66,
+    "source": "restart"
+  },
+  "gc_close_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 96,
+    "h": 49,
+    "source": "restart"
+  },
+  "gc_end_advance_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 148,
+    "h": 47,
+    "source": "restart"
+  },
+  "gc_fight_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 69,
+    "h": 44,
+    "source": "restart"
+  },
+  "gc_fight_btn2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 96,
+    "h": 60,
+    "source": "restart"
+  },
+  "gc_game_error": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 428,
+    "h": 39,
+    "source": "restart"
+  },
+  "gc_icon": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 71,
+    "h": 53,
+    "source": "restart"
+  },
+  "gc_icon2": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 235,
+    "h": 49,
+    "source": "restart"
+  },
+  "gc_item_cancel": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 107,
+    "h": 48,
+    "source": "restart"
+  },
+  "gc_next_area_btn": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 145,
+    "h": 50,
+    "source": "restart"
+  },
+  "gc_no_stamina_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 55,
+    "h": 52,
+    "source": "restart"
+  },
+  "gc_party_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 66,
+    "h": 29,
+    "source": "restart"
+  },
+  "gc_party_list_back": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 160,
+    "h": 60,
+    "source": "restart"
+  },
+  "gc_party_load_confirm": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 360,
+    "h": 50,
+    "source": "restart"
+  },
+  "gc_party_load_slot": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 115,
+    "h": 34,
+    "source": "restart"
+  },
+  "gc_party_ready": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 220,
+    "h": 70,
+    "source": "restart"
+  },
+  "gc_results_end_advance": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 170,
+    "h": 46,
+    "source": "restart"
+  },
+  "gc_save_load_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 65,
+    "h": 48,
+    "source": "restart"
+  },
+  "gc_yuna_card_back": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 85,
+    "h": 130,
+    "source": "restart"
+  },
+  "gc_yuna_chance": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 182,
+    "h": 58,
+    "source": "restart"
+  },
+  "gc_yuna_lets_go": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 90,
+    "h": 80,
+    "source": "restart"
+  },
+  "gc_yuna_regalia_pick": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 524,
+    "h": 110,
+    "source": "restart"
+  },
+  "gc_yuna_slots_start": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 550,
+    "h": 75,
+    "source": "restart"
+  },
+  "gc_yuna_slots_stop": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 450,
+    "h": 60,
+    "source": "restart"
+  },
+  "gc_yuna_slots_touch": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 380,
+    "h": 75,
+    "source": "restart"
+  },
+  "helper_back_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 122,
+    "h": 60,
+    "source": "restart"
+  },
+  "helper_cancel_ready_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 325,
+    "h": 60,
+    "source": "restart"
+  },
+  "helper_confirm_farm_party_join": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 205,
+    "h": 70,
+    "source": "restart"
+  },
+  "helper_food_blue_cheese": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 173,
+    "h": 35,
+    "source": "restart"
+  },
+  "helper_food_camembert": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 222,
+    "h": 35,
+    "source": "restart"
+  },
+  "helper_food_emmental": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 173,
+    "h": 35,
+    "source": "restart"
+  },
+  "helper_food_gorgonzola": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 173,
+    "h": 35,
+    "source": "restart"
+  },
+  "helper_food_list_header": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 178,
+    "h": 44,
+    "source": "restart"
+  },
+  "helper_food_red_cheese": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 192,
+    "h": 35,
+    "source": "restart"
+  },
+  "helper_friends_filter": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 111,
+    "h": 45,
+    "source": "restart"
+  },
+  "helper_full_lobby_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 115,
+    "h": 52,
+    "source": "restart"
+  },
+  "helper_reward_badge": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 170,
+    "h": 36,
+    "source": "restart"
+  },
+  "helper_join_multi_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 270,
+    "h": 60,
+    "source": "restart"
+  },
+  "helper_leave_lobby_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 175,
+    "h": 70,
+    "source": "restart"
+  },
+  "helper_lobby_back_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 122,
+    "h": 42,
+    "source": "restart"
+  },
+  "helper_manage_parties_ready": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 355,
+    "h": 55,
+    "source": "restart"
+  },
+  "helper_multiplayer_bonus": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 293,
+    "h": 50,
+    "source": "restart"
+  },
+  "helper_ready_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 325,
+    "h": 60,
+    "source": "restart"
+  },
+  "helper_refine_search_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 143,
+    "h": 39,
+    "source": "restart"
+  },
+  "helper_same_as_host_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 103,
+    "h": 97,
+    "source": "restart"
+  },
+  "helper_select_food": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 67,
+    "h": 55,
+    "source": "restart"
+  },
+  "helper_update_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 160,
+    "h": 50,
+    "source": "restart"
+  },
+  "compendium_card_lv": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 24,
+    "h": 19,
+    "source": "restart"
+  },
+  "compendium_card_lv_rainbow": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 24,
+    "h": 19,
+    "source": "restart"
+  },
+  "compendium_detail_marker": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 130,
+    "h": 50,
+    "source": "restart"
+  },
+  "compendium_grid_header": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 124,
+    "h": 37,
+    "source": "restart"
+  },
+  "gc_area_list_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 135,
+    "h": 99,
+    "source": "restart"
+  },
+  "gc_area_list_end_arrow": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 61,
+    "h": 48,
+    "source": "restart"
+  },
+  "gc_area_page_first": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 84,
+    "h": 40,
+    "source": "restart"
+  },
+  "gc_destination_prompt": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 340,
+    "h": 44,
+    "source": "restart"
+  },
+  "gc_map_menu_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 86,
+    "h": 32,
+    "source": "restart"
+  },
+  "gc_menu_areas_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "w": 210,
+    "h": 56,
+    "source": "restart"
+  },
+  "potion_used_ok": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 276,
+    "y": 662,
+    "w": 168,
+    "h": 58
+  },
+  "potion_used_text": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 220,
+    "y": 575,
+    "w": 145,
+    "h": 30
+  },
+  "home_nav_button": {
+    "screen_w": 720,
+    "screen_h": 1280,
+    "x": 4,
+    "y": 1156,
+    "w": 112,
+    "h": 118,
+    "threshold": 0.9
+  }
+}

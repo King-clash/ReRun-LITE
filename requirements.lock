@@ -1,0 +1,13 @@
+# Exact versions Rerun is built and tested with (installed on the dev machine, Python 3.12).
+# Install with:  py -m pip install -r requirements.lock
+# requirements.txt keeps the loose minimums; bump this file after testing a new version.
+opencv-python==5.0.0.93
+numpy==2.5.4
+PyYAML==6.0.3
+pillow==13.0.0
+discord.py==2.7.1
+pynput==1.8.2
+pystray==0.19.5
+# build only (python build.py):
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.10
