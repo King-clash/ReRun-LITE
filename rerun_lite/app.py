@@ -36,14 +36,19 @@ from rerun.ios import C, F, px
 from rerun.safety import TOS_WARNING
 from rerun.scripts import SCRIPTS
 
-from . import APP_NAME, DAILIES_SCRIPTS, LITE_SCRIPTS, MAIN_SCRIPT, __version__, channel
+from . import APP_NAME, DAILIES_SCRIPTS, LITE_SCRIPTS, MAIN_SCRIPT, __version__, channel, theme
 from .icon import make_lite_icon
 from .manager import LiteManager
+from .theme import GroupedNav, LiteTabs
 from .tray import LiteTray
 
 # The original page builders name their page; LITE shows the Dashboard under the feature's own name.
-PAGE_NAMES = {"Dashboard": ("Auto Crest", "Auto Crest", "home")}
-SETTINGS_SECTIONS = [("scripts", "Crest & Dailies"), ("discord", "Discord"), ("log", "Log"), ("app", "App")]
+PAGE_NAMES = {"Dashboard": ("Auto Crest", "Auto Crest", "home"), "Settings": ("General", "Settings", "settings")}
+# Settings side list: one entry per script (the original page has a Script chooser; here the list is the chooser),
+# then Discord, then the app's own pages. A caption is drawn above the entries named in SETTINGS_HEADS.
+SETTINGS_SECTIONS = [(MAIN_SCRIPT, "Auto Crest"), ("login_mail", "Login & Mail"), ("raid_tickets", "Raid Tickets"),
+                     ("discord", "Discord"), ("app", "General"), ("log", "Log")]
+SETTINGS_HEADS = {MAIN_SCRIPT: "Automation", "discord": "Alerts", "app": "App"}
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 NOT_LINKED = "Not linked"
 # The original's messages name places in the full app; LITE says where the same thing is here.
@@ -64,27 +69,6 @@ def _labels(root: tk.Misc):
         yield from _labels(w)
 
 
-class LiteTabs(ios.TabView):
-    """The original tab bar. `alias` lets a page the original reaches as a tab (Discord) open the right
-    section of LITE's Settings tab; `on_select` tells the window which tab came to the front."""
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.alias: dict = {}
-        self.on_select = None
-
-    def select(self, i):
-        if i in self.alias:
-            tab, show = self.alias[i]
-            super().select(tab)
-            show()
-            i = tab
-        else:
-            super().select(i)
-        if self.on_select is not None:
-            self.on_select(i)
-
-
 class LiteApp(App):
     WIP_TEXT = (f"{APP_NAME} is a Work In Progress.\n\nIt runs ReRun's Crest and Dailies. Keep an eye on it "
                 "while it plays, and report anything odd.")
@@ -95,7 +79,9 @@ class LiteApp(App):
         tk.Tk.__init__(self)
         self.m = manager
         self.license = license
+        theme.apply_palette()
         ios.init(self, str(self.m.config.get("appearance", "auto")))
+        theme.apply_look()
         self.title(APP_NAME)
         self.geometry(f"{px(1140)}x{px(840)}")
         self._ui_path = channel.data_dir(self.m.root) / "ui.json"     # LITE's own window memory
@@ -118,7 +104,7 @@ class LiteApp(App):
         self._content_pending = False
         self._app_ready: dict | None = None
 
-        self.nb = LiteTabs(self)
+        self.nb = LiteTabs(self, __version__)
         self.nb.pack(fill="both", expand=True)
         self.status = self.nb.status
         self.toast = ios.Toast(self.nb.content)
@@ -161,8 +147,11 @@ class LiteApp(App):
 
     # ================================================================ pages
     def _page(self, title: str, tab: str, icon: str, scroll: bool = False):
-        title, tab, icon = PAGE_NAMES.get(title, (title, tab, icon))
-        return super()._page(title, tab, icon, scroll)
+        shown, tab, icon = PAGE_NAMES.get(title, (title, tab, icon))
+        res = super()._page(shown, tab, icon, scroll)
+        if title == "Routine Settings":                      # its title follows the script picked in the side list
+            self._rs_title = res[2].master.winfo_children()[0]
+        return res
 
     def _build_crest(self):
         """Auto Crest: the original Dashboard page as it is, without the script chooser (an emulator in LITE
@@ -206,8 +195,8 @@ class LiteApp(App):
         tk.Label(row, text="Weekly reset day", bg=C["card"], fg=C["secondary"], font=F["footnote"]).pack(side="left")
         self._dl_week = ios.Select(row, values=WEEKDAYS, accent=True, command=self._dl_set_week)
         self._dl_week.pack(side="left", padx=(px(8), 0))
-        ios.wrapped_label(strip.body, "Run starts the task's script on that emulator. Weekly tasks reset at 6 AM UTC-6 on "
-                                      "that day - Monday is a guess until you set the game's real day.").pack(fill="x")
+        ios.wrapped_label(strip.body, "Run starts that task's script on this emulator. Weekly tasks reset at 6 AM UTC-6 on "
+                                      "the chosen day (Monday is a guess until you set the game's real day).").pack(fill="x", pady=(px(4), 0))
         self._am_scroll = ios.ScrollFrame(page)
         self._am_scroll.pack(fill="both", expand=True, padx=px(12), pady=(px(4), px(10)))
         self._am_inner = self._am_scroll.inner
@@ -219,19 +208,19 @@ class LiteApp(App):
         self._am_render()
 
     def _build_lite_settings(self):
-        """Settings: the original script-settings, Discord, Log and App pages, behind one side list."""
+        """Settings: the original script-settings, Discord, App and Log pages, behind one grouped side list."""
         page = tk.Frame(self.nb.content, bg=C["bg"])
         self.nb.add(page, "Settings", "settings")
         self._tab_settings = self.nb.count() - 1
         body = tk.Frame(page, bg=C["bg"])
         body.pack(fill="both", expand=True, padx=px(12), pady=(px(10), px(10)))
-        self._set_nav = ios.SideNav(body, SETTINGS_SECTIONS, self._set_show, title="Settings")
+        self._set_nav = GroupedNav(body, SETTINGS_SECTIONS, self._set_show, SETTINGS_HEADS)
         self._set_nav.pack(side="left", fill="y")
         self._set_stage = tk.Frame(body, bg=C["bg"])
         self._set_stage.pack(side="left", fill="both", expand=True, padx=(px(8), 0))
         self._set_pages: dict[str, tk.Misc] = {}
         for key, build in (("scripts", self._build_settings), ("discord", self._build_discord),
-                           ("log", self._build_log), ("app", self._build_app_settings)):
+                           ("app", self._build_app_settings), ("log", self._build_log)):
             self._host = self._set_stage
             try:
                 build()
@@ -248,8 +237,12 @@ class LiteApp(App):
                     lb.configure(text=text.replace("Rerun", APP_NAME))
         title = self.upd_status.master.winfo_children()[0]       # the "Rerun x.y.z" row of the Updates group
         title.configure(text=f"{APP_NAME} {__version__}")
-        self._set_nav.select("scripts", notify=False)
-        self._set_show("scripts")
+        row = self.set_script.master.master                      # the original's "Script" row: the side list replaces it
+        kids = row.master.winfo_children()
+        for w in (kids[kids.index(row) - 1], row):               # the row and the divider above it
+            w.pack_forget()
+        self._set_nav.select(MAIN_SCRIPT, notify=False)
+        self._set_show(MAIN_SCRIPT, load=False)
 
     def _lite_script_lists(self):
         """The two script pickers (settings, template checklist) list LITE's scripts, Crest first. The Templates
@@ -262,13 +255,20 @@ class LiteApp(App):
             if isinstance(w, tk.Label):
                 w.bind("<Configure>", lambda e, w=w: w.configure(wraplength=max(px(200), e.width - 4)), add="+")
 
-    def _set_show(self, key: str):
+    def _set_show(self, key: str, load: bool = True):
         for w in self._set_stage.winfo_children():
             w.pack_forget()
-        self._set_pages[key].pack(fill="both", expand=True)
+        script = key in LITE_SCRIPTS                  # the three script entries share the original settings page
+        self._set_pages["scripts" if script else key].pack(fill="both", expand=True)
+        if script:
+            name = SCRIPTS[key].display_name()
+            self.set_script.set(name)
+            self._rs_title.configure(text=f"{name} Settings")
+            if load:
+                self._load_settings_form()
 
     def open_script_settings(self, script: str):
-        """Settings > Crest & Dailies, showing `script` for the emulator in use."""
+        """Settings > the entry for `script`, showing it for the emulator in use."""
         if script == MAIN_SCRIPT:
             inst = self.selected()
         else:
@@ -276,10 +276,8 @@ class LiteApp(App):
             inst = a["instance"] if a else ""
         if inst in self.m.instances:
             self.set_inst.set(inst)
-        self.set_script.set(SCRIPTS[script].display_name())
-        self._load_settings_form()
         self.nb.select(self._tab_settings)
-        self._set_nav.select("scripts")
+        self._set_nav.select(script)
 
     def _load_settings_form(self):
         super()._load_settings_form()

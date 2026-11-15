@@ -377,7 +377,7 @@ def test_window_has_the_two_features_and_only_their_tools():
     try:
         assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "Dailies", "History", "Templates", "Settings"]
         assert app.title() == APP_NAME
-        assert [k for k, _ in app._set_nav._items] == ["scripts", "discord", "log", "app"]
+        assert [k for k, _ in app._set_nav._items] == ["crest", "login_mail", "raid_tickets", "discord", "app", "log"]
         for attr in ("_am_nav", "_farm_nav", "_tab_accounts", "_tab_farming", "unit_tree", "companion"):
             assert not hasattr(app, attr), f"{attr}: a page LITE must not build"
         crest_page, dailies_page = app.nb._pages[app._tab_crest], app.nb._pages[app._tab_dailies]
@@ -506,9 +506,10 @@ def test_settings_pages_are_the_originals_with_lite_names_and_places():
     try:
         app.open_script_settings("login_mail")
         pump(app)
-        assert app.nb.index() == app._tab_settings and app._set_nav.current == "scripts"
+        assert app.nb.index() == app._tab_settings and app._set_nav.current == "login_mail"
         assert app.set_script.get() == "Login & Mail" and set(app.form_vars) == {"mode_247", "claim_limit"}
         assert app.form.winfo_children()[-1].footer.cget("text") == SCHEDULE_NOTE
+        assert app._rs_title.cget("text") == "Login & Mail Settings"
         app.open_script_settings("crest")
         assert app.set_script.get() == "Crest" and {"runs", "keep", "start_home", "palace_name"} <= set(app.form_vars)
         app.form_vars["keep"].set("Lv4 and better")

@@ -22,7 +22,7 @@ lead to account limits, suspension or a permanent ban. The warning is on both fe
 | **Dailies** | The daily and weekly checklist. It resets on the game clock (6 AM UTC-6). Mark Done / Undo / Confirm, your own tasks, Run and Run Next Due. Above it: which emulator the account plays on, and the weekly reset day. |
 | **History** | Crests kept and scrapped (with pictures), refills, sessions and problems. |
 | **Templates** | Capture, test and import the pictures the scripts look for (for example your palace tile). |
-| **Settings** | Crest, Login & Mail and Raid Tickets settings and the daily schedule; Discord alerts; the Log; app settings (theme, tray, start options, setup check, updates). |
+| **Settings** | A side list in three groups. **Automation:** Auto Crest, Login & Mail and Raid Tickets settings (one entry each, per emulator, plus the daily schedule). **Alerts:** Discord. **App:** General (theme, tray, start options, setup check, updates) and the Log. |
 
 Also included: the key sign-in, F12 (stop everything) and F11 (pause/resume), the tray icon, 24/7 mode,
 Dry Run, Discord alerts with screenshots and the status board, the daily summary.
@@ -67,6 +67,8 @@ The `rerun/` folder is a copy of the ReRun engine (version 1.2.1) that Crest and
 - `manager.py` - `LiteManager`: the engine's `Manager` with the script list cut to Crest, Login & Mail and
   Raid Tickets.
 - `app.py` - `LiteApp`: the window, built from five of the original pages.
+- `theme.py` - the look (palette, outlined cards, the brand top bar with the five tabs, the grouped Settings list),
+  applied at run time so `rerun/` stays exactly as copied.
 - `channel.py` - the update channel; `content.py` - the templates LITE ships; `bot.py`, `tray.py`,
   `icon.py` - the Discord bot, tray icon and icon.
 - `lite_main.py` (entry point), `build_lite.py` and `build.py` (build), `tools/` (build log, update site),
