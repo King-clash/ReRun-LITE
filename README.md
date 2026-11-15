@@ -27,6 +27,22 @@ lead to account limits, suspension or a permanent ban. The warning is on both fe
 Also included: the key sign-in, F12 (stop everything) and F11 (pause/resume), the tray icon, 24/7 mode,
 Dry Run, Discord alerts with screenshots and the status board, the daily summary.
 
+## Everyday conveniences
+
+- **Status chip** (top right): what LITE is doing now - *Ready*, *Needs setup*, *Crest running on Instance 1*,
+  *Paused* or *Error*. Click it to open Auto Crest (or, when something is missing, to go and fix it). The same
+  words are added to the window title, so you can read them from the taskbar.
+- **Tab badges:** a green dot on Auto Crest while it runs, the number of daily tasks still to do on Dailies
+  (a tick when they are all done), and an orange ! on Auto Crest, Templates or Settings when something is missing.
+- **"Needs setup" strip** on Auto Crest: says what would stop Crest from starting (no emulator, missing template
+  pictures, no palace chosen) with a button that goes straight to the fix. Nothing is sent to the emulator to
+  check this.
+- **Keyboard:** Ctrl+1 to Ctrl+5 switch tabs, Ctrl+Tab / Ctrl+Shift+Tab step through them, Ctrl+, opens Settings,
+  F1 lists them all. Hovering a tab shows its shortcut.
+- **Pin on top** (Pin button, Ctrl+T, or Settings > General): keeps the window above the game while you watch.
+- **Remembered:** window size and position, the open tab, the open Settings entry and the pin.
+- **Settings > General > Window & files:** open the data folder, the on-top switch and the shortcut list.
+
 ## What is not in it
 
 No other scripts (quests, arena, raids, mines and so on), no custom routines, no Account Manager, no Units
@@ -67,12 +83,16 @@ The `rerun/` folder is a copy of the ReRun engine (version 1.2.1) that Crest and
 - `manager.py` - `LiteManager`: the engine's `Manager` with the script list cut to Crest, Login & Mail and
   Raid Tickets.
 - `app.py` - `LiteApp`: the window, built from five of the original pages.
-- `theme.py` - the look (palette, outlined cards, the brand top bar with the five tabs, the grouped Settings list),
-  applied at run time so `rerun/` stays exactly as copied.
+- `app.py` - `LiteApp`: start-up, the update, Discord and wording changes. It is built from three mixins:
+  `pages.py` (Auto Crest, Dailies and Settings pages), `status.py` (status chip, badges, shortcuts, pin, the
+  Window & files group) and `state.py` (window memory in `data/lite/ui.json`).
+- `readiness.py` - the local "is it ready?" checks behind the chip, badges and the setup strip.
+- `theme.py` - the look (palette, outlined cards, the brand top bar with the five tabs, the grouped Settings
+  list, tooltips), applied at run time so `rerun/` stays exactly as copied.
 - `channel.py` - the update channel; `content.py` - the templates LITE ships; `bot.py`, `tray.py`,
   `icon.py` - the Discord bot, tray icon and icon.
 - `lite_main.py` (entry point), `build_lite.py` and `build.py` (build), `tools/` (build log, update site),
-  `tests/test_lite.py` (22 tests: `py tests/test_lite.py`).
+  `tests/test_lite.py` (25 tests: `py tests/test_lite.py`).
 
 The copy of `rerun/` is not kept in step with ReRun automatically. A fix made there has to be brought over
 by hand.
@@ -81,7 +101,7 @@ by hand.
 
 - **Checked automatically:** `tests/test_lite.py` drives Auto Crest and the Dailies' Login & Mail task
   against a simulated game (scrap and redeploy, keep and stop, unknown crest, dry run, checklist states,
-  no duplicate runs), builds the window, and tests the update channel against a local server. 22 of 22 pass.
+  no duplicate runs), builds the window, and tests the update channel against a local server. 25 of 25 pass.
 - **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window.
   Crest and Login & Mail are the same scripts that were verified live in ReRun; the Dailies checklist
   starting them, Raid Tickets, and Dry Run on a real emulator have not been (they are Beta in ReRun too).

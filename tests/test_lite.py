@@ -553,6 +553,76 @@ def test_lite_keeps_its_window_memory_out_of_config_yaml():
         close(app, root)
 
 
+def test_status_chip_badges_and_title_follow_what_the_emulators_do():
+    root, m, inst, app = open_lite()
+    try:
+        app._refresh_status()
+        assert "Needs setup" in app.nb.chip.cget("text")                  # no palace chosen yet
+        assert app.nb._badges[app._tab_crest].cget("text") == "!" and app._ready_notice.winfo_manager()
+        assert app.nb._badges[app._tab_dailies].cget("text").isdigit()    # daily tasks still to do
+        m.instances[inst].status = "running"
+        app._status_sig = None
+        app._refresh_status()
+        assert f"Crest running on {inst}" in app.nb.chip.cget("text")
+        assert app.nb._badges[app._tab_crest].cget("text") == "●" and app.title().endswith(f"Crest running on {inst}")
+        m.instances[inst].status = "paused"
+        app._status_sig = None
+        app._refresh_status()
+        assert "Paused" in app.nb.chip.cget("text") and app.nb._badges[app._tab_crest].cget("text") == "II"
+        m.instances[inst].status = "idle"
+        m.save_script_settings(inst, "crest", {**m.script_settings(inst, "crest"), "palace_name": "Wind"})
+        app._status_sig = None
+        app._refresh_status()
+        assert app.title() == f"{APP_NAME}" or not app.title().endswith("Paused")     # the suffix is taken off again
+        assert not any(p.fix == "settings" for p in app._problems)         # a palace name is enough
+        assert not app.nb._badges[app._tab_settings].winfo_manager()
+        assert not app.errors, app.errors
+    finally:
+        close(app, root)
+
+
+def test_readiness_checks_are_local_and_name_the_fix():
+    from rerun_lite import readiness
+    root, m, inst, app = open_lite()
+    try:
+        fixes = {p.fix for p in readiness.crest_problems(m, inst)}
+        assert "settings" in fixes                                        # nothing says which palace to open
+        m.save_script_settings(inst, "crest", {**m.script_settings(inst, "crest"), "start_home": False})
+        assert "settings" not in {p.fix for p in readiness.crest_problems(m, inst)}   # not needed without Home start
+        sim_templates(m, "crest")
+        assert not [p for p in readiness.crest_problems(m, inst) if p.fix == "templates"]
+        assert readiness.dailies_left(m.ops) >= 1
+    finally:
+        close(app, root)
+
+
+def test_shortcuts_pin_and_settings_section_are_remembered():
+    root, m, inst, app = open_lite()
+    try:
+        for n in range(1, 6):
+            assert app.bind_all(f"<Control-Key-{n}>"), n
+        app._go_tab(app._tab_dailies)
+        assert app.nb.index() == app._tab_dailies
+        app._cycle_tab(1)
+        assert app.nb.index() == app._tab_dailies + 1
+        app._cycle_tab(-1)
+        assert app.nb.index() == app._tab_dailies
+        assert bool(app.attributes("-topmost")) is False
+        app._toggle_pin()
+        assert bool(app.attributes("-topmost")) and app.nb.pin.cget("text") == "Pinned" and app._pin_var.get()
+        app.open_script_settings("raid_tickets")
+        app._save_ui_state()
+        ui = json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))
+        assert ui["pinned"] is True and ui["section"] == "raid_tickets"
+        app._set_nav.select("discord")                                    # moved away: the saved entry comes back
+        app._restore_tab()
+        assert app._set_nav.current == "raid_tickets" and app._rs_title.cget("text").startswith("Raid Tickets")
+        words = " ".join(texts(app._set_pages["app"]))
+        assert "Keep this window on top" in words and "Open the data folder" in words
+    finally:
+        close(app, root)
+
+
 def test_selftest_builds_the_whole_window():
     import lite_main
     out = Path(tempfile.mkdtemp()) / "r.txt"
