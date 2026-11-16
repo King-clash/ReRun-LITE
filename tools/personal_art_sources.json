@@ -1,5 +1,5 @@
 {
- "note": "Pictures picked by hand from each anime's Fandom wiki (character renders and stills). For personal use only.",
+ "note": "Pictures picked by hand from each anime's Fandom wiki: transparent character renders wherever one exists. For personal use only.",
  "crop_left": [
   "tokyo-ghoul/kaneki",
   "tokyo-ghoul/touka"
@@ -12,8 +12,8 @@
    "megumi": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Megumi_Fushiguro_%28Anime_4%29.png/revision/latest?cb=20251230155327"
   },
   "solo-leveling": {
-   "jinwoo": "https://static.wikia.nocookie.net/solo-leveling/images/8/8b/Jinwoo4.jpg/revision/latest?cb=20250411080707",
-   "shadows": "https://static.wikia.nocookie.net/solo-leveling/images/d/d7/Igris22.jpeg/revision/latest?cb=20250130123238",
+   "jinwoo": "https://static.wikia.nocookie.net/solo-leveling/images/c/cc/Sung_Jinwoo_Anime.png/revision/latest?cb=20250316023405",
+   "shadows": "https://static.wikia.nocookie.net/solo-leveling/images/b/b9/Anime_Igris_the_Bloodred_character_render.png/revision/latest?cb=20240405001255",
    "hunters": "https://static.wikia.nocookie.net/solo-leveling/images/9/91/Cha_Hae-In.png/revision/latest?cb=20240119133508"
   },
   "naruto": {
@@ -23,7 +23,7 @@
    "akatsuki": "https://static.wikia.nocookie.net/naruto/images/9/94/Akatsuki_revived.png/revision/latest?cb=20130111162505"
   },
   "bleach": {
-   "aizen": "https://static.wikia.nocookie.net/bleach/images/a/a1/Ep414AizenTYBWProfile.png/revision/latest?cb=20260912235200&path-prefix=en",
+   "aizen": "https://static.wikia.nocookie.net/bleach/images/9/94/Aizen_Anime_Fullbody.png/revision/latest?cb=20221114174727&path-prefix=en",
    "ichigo": "https://static.wikia.nocookie.net/bleach/images/f/ff/Ichigo_Anime_Fullbody.png/revision/latest?cb=20221021180553&path-prefix=en",
    "rukia": "https://static.wikia.nocookie.net/bleach/images/b/ba/Rukia_Anime_Fullbody.png/revision/latest?cb=20221021200615&path-prefix=en"
   },
@@ -46,9 +46,9 @@
   },
   "attack-on-titan": {
    "survey-corps": "https://static.wikia.nocookie.net/shingekinokyojin/images/a/a7/Survey_Corps_Logo.png/revision/latest?cb=20140307090257",
-   "eren": "https://static.wikia.nocookie.net/shingekinokyojin/images/a/a1/Eren_Jaeger_%28Anime%29_character_image.png/revision/latest?cb=20220123225500",
-   "levi": "https://static.wikia.nocookie.net/shingekinokyojin/images/b/b1/Levi_Ackermann_%28Anime%29_character_image.png/revision/latest?cb=20231105181307",
-   "mikasa": "https://static.wikia.nocookie.net/shingekinokyojin/images/4/4f/Mikasa_Ackermann_%28Anime%29_character_image.png/revision/latest?cb=20231105175401"
+   "eren": "https://static.wikia.nocookie.net/shingekinokyojin/images/3/3e/AoT3_Eren_Jaeger_Render_1.png/revision/latest?cb=20260804183412",
+   "levi": "https://static.wikia.nocookie.net/shingekinokyojin/images/b/b7/AoT3_Levi_Render_1.png/revision/latest?cb=20260804190345",
+   "mikasa": "https://static.wikia.nocookie.net/shingekinokyojin/images/1/1c/AoT3_Mikasa_Ackermann_Render_2.png/revision/latest?cb=20260804183845"
   },
   "chainsaw-man": {
    "denji": "https://static.wikia.nocookie.net/chainsaw-man/images/b/b0/Denji_Reze_Arc_anime_design.png/revision/latest?cb=20250324010006",
@@ -76,8 +76,8 @@
    "hisoka": "https://static.wikia.nocookie.net/hunterxhunter/images/2/29/Hisoka_Morow_YC_Portrait.png/revision/latest?cb=20190123172039"
   },
   "initial-d": {
-   "takumi": "https://static.wikia.nocookie.net/initiald/images/9/9d/Takumi_Ch044.png/revision/latest?cb=20240910094634",
-   "ae86": "https://static.wikia.nocookie.net/initiald/images/c/c3/Levin_86_Ch125.png/revision/latest?cb=20200601014030"
+   "takumi": "https://static.wikia.nocookie.net/initiald/images/6/6a/Takumi_Fujiwara_AS0.png/revision/latest?cb=20230502211051",
+   "ae86": "https://static.wikia.nocookie.net/initiald/images/c/c2/Takumi_Fujiwara_and_AE86_AS8.png/revision/latest?cb=20211211091518"
   },
   "dragon-ball": {
    "goku": "https://static.wikia.nocookie.net/dragonball/images/b/ba/Goku_anime_profile.png/revision/latest?cb=20250723190513",
