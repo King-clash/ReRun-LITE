@@ -332,6 +332,46 @@ class Library:
             raise ArtError("The picture was saved but could not be found again.")
         return found
 
+    def import_folder(self, folder: str | Path) -> tuple[list[ArtImage], list[str]]:
+        """Add many of the user's own pictures at once. `folder` holds one sub-folder per anime (named by its id, for
+        example `jujutsu-kaisen`); inside, `gojo.png` (or `gojo--alt.png`) is a character, a name starting `background` is
+        a background and one starting `banner` is a banner. Pictures already added from the same file name are skipped, so
+        importing twice does not make copies. Returns (added, notes about what was skipped and why)."""
+        added: list[ArtImage] = []
+        notes: list[str] = []
+        done = {(a.get("collection"), a.get("kind"), str(a.get("source", "")).split("'")[1] if "'" in str(a.get("source", "")) else "")
+                for a in _read_json(user_dir(self.root) / USER_MANIFEST).get("assets") or [] if isinstance(a, dict)}
+        root = Path(folder)
+        try:
+            subs = sorted(d for d in root.iterdir() if d.is_dir())
+        except OSError:
+            return [], ["That folder cannot be read."]
+        for sub in subs:
+            col = self.collections.get(slug(sub.name))
+            if col is None:
+                notes.append(f"{sub.name}: not one of the 16 anime folder names")
+                continue
+            for f in sorted(sub.iterdir()):
+                if not f.is_file() or f.suffix.lower() not in IMPORT_TYPES:
+                    continue
+                stem = f.stem.lower()
+                if stem.startswith("background"):
+                    kind, who = "backgrounds", ""
+                elif stem.startswith("banner"):
+                    kind, who = "banners", ""
+                else:
+                    kind, who = "characters", slug(stem.split("--")[0], "")
+                    if col.character(who) is None:
+                        notes.append(f"{sub.name}/{f.name}: no character called '{who}' in {col.name}")
+                        continue
+                if (col.id, kind, f.name) in done:
+                    continue
+                try:
+                    added.append(self.add_user_image(col.id, kind, f, who, stem.split("--", 1)[-1]))
+                except ArtError as e:
+                    notes.append(f"{sub.name}/{f.name}: {e}")
+        return added, notes
+
     def _record_user(self, cid: str, kind: str, name: str, character: str, size, original: str) -> None:
         """Keep a note of where each of the user's pictures came from (the same facts the bundled manifest holds)."""
         path = user_dir(self.root) / USER_MANIFEST

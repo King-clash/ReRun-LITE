@@ -81,6 +81,12 @@ Settings > Artwork > an anime > **Add picture...** next to a character, the back
 converted to WebP and kept on your PC in `data/lite/artwork/`. They are never uploaded, bundled or shared. The page
 asks you once to only add pictures you own or may use.
 
+- **Adding many at once.** Settings > Artwork > **Import a folder...** takes a folder with one sub-folder per anime,
+  named by the anime's id (`jujutsu-kaisen`, `solo-leveling`, `naruto`, `bleach`, `evangelion`, `demon-slayer`,
+  `one-piece`, `attack-on-titan`, `chainsaw-man`, `frieren`, `cowboy-bebop`, `tokyo-ghoul`, `hunter-x-hunter`,
+  `initial-d`, `dragon-ball`, `spy-x-family`). Inside, `gojo.png` is a character (the character's id; `gojo--alt.png`
+  adds an alternate), a name starting `background` is a background and one starting `banner` is a banner. Anything it
+  cannot place is skipped and counted; importing the same folder twice adds no copies.
 - **Where it shows.** *Background:* a still picture behind the whole window (opacity 5-60%, blur 0-12, position
   centre/top/bottom/left/right). It replaces the look's video only while one is chosen, and never touches the Live View.
   *Header:* a banner under the Auto Crest title (height 40-140). *Instance:* a small portrait on each emulator row

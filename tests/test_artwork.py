@@ -134,6 +134,30 @@ def test_user_pictures_are_converted_recorded_and_removable():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def test_a_folder_of_the_users_own_pictures_is_imported_once():
+    root = workspace(copy_assets=False)
+    try:
+        inbox = root / "inbox"
+        for rel, size in (("jujutsu-kaisen/gojo.png", (500, 700)), ("jujutsu-kaisen/gojo--alt.png", (500, 700)),
+                          ("jujutsu-kaisen/background-night.jpg", (1600, 900)), ("jujutsu-kaisen/banner.png", (1800, 300)),
+                          ("jujutsu-kaisen/nobody.png", (50, 50)), ("one-piece/luffy.webp", (400, 600)),
+                          ("not-an-anime/x.png", (50, 50))):
+            picture(inbox / rel, size)
+        (inbox / "one-piece" / "zoro.png").write_text("broken", encoding="utf-8")
+        lib = art.Library(root)
+        added, notes = lib.import_folder(inbox)
+        assert sorted((a.collection, a.kind, a.character) for a in added) == [
+            ("jujutsu-kaisen", "backgrounds", ""), ("jujutsu-kaisen", "banners", ""), ("jujutsu-kaisen", "characters", "gojo"),
+            ("jujutsu-kaisen", "characters", "gojo"), ("one-piece", "characters", "luffy")]
+        assert len(notes) == 3 and any("nobody" in n for n in notes) and any("not-an-anime" in n for n in notes) \
+            and any("zoro" in n for n in notes), notes
+        again, _ = lib.import_folder(inbox)
+        assert again == [] and len(lib.images("jujutsu-kaisen", "characters", "gojo")) == 2     # a second import makes no copies
+        assert lib.import_folder(root / "missing")[1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def test_bad_files_are_refused_with_a_reason():
     root = workspace(copy_assets=False)
     try:

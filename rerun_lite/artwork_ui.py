@@ -402,6 +402,7 @@ class ArtworkMixin:
         self._art_status.pack()
         row = g.row("Files", "Your own pictures are kept in data/lite/artwork.")
         ios.Button(row, "Open folder", self._art_open_folder, kind="tinted", small=True).pack(side="left")
+        ios.Button(row, "Import a folder…", self._art_import_folder, kind="tinted", small=True).pack(side="left", padx=(px(8), 0))
         ios.Button(row, "Reset all artwork", self._art_reset_all, kind="plain", color="red", small=True).pack(side="left", padx=(px(8), 0))
         # ---- the gallery
         g = ios.Group(wrap, header="Collections",
@@ -706,6 +707,30 @@ class ArtworkMixin:
                 self.flash(f"Added {img.label}", "ok")
                 self._art_changed()
         c.loader.submit(job, done)
+
+    def _art_import_folder(self) -> None:
+        """Many of the user's own pictures at once: a folder with one sub-folder per anime (see Library.import_folder)."""
+        c = self._art_state()
+        if not self._ui_state().get("artwork_rights_seen"):
+            if not ios.confirm(self, ASK_RIGHTS, "Add your own artwork", ok="I understand"):
+                return
+            self._bg_save(artwork_rights_seen=True)
+        folder = filedialog.askdirectory(title="Choose the folder that holds one sub-folder per anime")
+        if not folder:
+            return
+
+        def done(res):
+            if res is None:
+                self.flash("The folder could not be imported.", "error")
+                return
+            added, notes = res
+            if added and not c.prefs.collection:
+                c.prefs.collection = added[0].collection
+            self.flash(f"Added {len(added)} picture(s)" + (f"; skipped {len(notes)}" if notes else ""), "ok" if added else "warn")
+            if notes:
+                errlog.note("lite.art_import", RuntimeError("; ".join(notes[:20])))
+            self._art_changed()
+        c.loader.submit(lambda: c.lib.import_folder(folder), done)
 
     def _art_remove(self, image) -> None:
         c = self._art_state()
