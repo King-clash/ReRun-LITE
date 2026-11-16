@@ -87,6 +87,11 @@ asks you once to only add pictures you own or may use.
   `initial-d`, `dragon-ball`, `spy-x-family`). Inside, `gojo.png` is a character (the character's id; `gojo--alt.png`
   adds an alternate), a name starting `background` is a background and one starting `banner` is a banner. Anything it
   cannot place is skipped and counted; importing the same folder twice adds no copies.
+- **Getting pictures for your own copy.** `py tools/fetch_personal_art.py` downloads character pictures and a few key
+  pictures for all 16 anime from the public Jikan API (a MyAnimeList reader) into `~/ReRun-LITE-art-inbox`, in exactly the
+  layout above; `--check` first shows which MyAnimeList entry each anime resolves to. It is for personal use: the folder
+  is outside the repository, nothing is committed or bundled, and the pictures belong to their owners. They are small
+  (character pictures about 225 x 350), so larger pictures of your own look better. Not run against the live API yet.
 - **Where it shows.** *Background:* a still picture behind the whole window (opacity 5-60%, blur 0-12, position
   centre/top/bottom/left/right). It replaces the look's video only while one is chosen, and never touches the Live View.
   *Header:* a banner under the Auto Crest title (height 40-140). *Instance:* a small portrait on each emulator row
