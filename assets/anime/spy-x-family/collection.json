@@ -1,0 +1,44 @@
+{
+ "id": "spy-x-family",
+ "name": "Spy x Family",
+ "order": 16,
+ "accent": "#E8678F",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "loid",
+    "name": "Loid Forger",
+    "image": ""
+   },
+   {
+    "id": "yor",
+    "name": "Yor Forger",
+    "image": ""
+   },
+   {
+    "id": "anya",
+    "name": "Anya Forger",
+    "image": ""
+   },
+   {
+    "id": "forgers",
+    "name": "The Forger family",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

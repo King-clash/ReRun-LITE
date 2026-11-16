@@ -1,0 +1,44 @@
+{
+ "id": "naruto",
+ "name": "Naruto Akatsuki",
+ "order": 3,
+ "accent": "#D6322E",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "itachi",
+    "name": "Itachi Uchiha",
+    "image": ""
+   },
+   {
+    "id": "pain",
+    "name": "Pain",
+    "image": ""
+   },
+   {
+    "id": "obito",
+    "name": "Obito Uchiha",
+    "image": ""
+   },
+   {
+    "id": "akatsuki",
+    "name": "Akatsuki",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "id": "dragon-ball",
+ "name": "Dragon Ball",
+ "order": 15,
+ "accent": "#F28C1E",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "goku",
+    "name": "Son Goku",
+    "image": ""
+   },
+   {
+    "id": "vegeta",
+    "name": "Vegeta",
+    "image": ""
+   },
+   {
+    "id": "gohan",
+    "name": "Son Gohan",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

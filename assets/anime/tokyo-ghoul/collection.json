@@ -1,0 +1,34 @@
+{
+ "id": "tokyo-ghoul",
+ "name": "Tokyo Ghoul",
+ "order": 12,
+ "accent": "#C2263B",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "kaneki",
+    "name": "Ken Kaneki",
+    "image": ""
+   },
+   {
+    "id": "touka",
+    "name": "Touka Kirishima",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

@@ -23,6 +23,7 @@ from . import APP_NAME, LITE_SCRIPTS, __version__, appearance, channel, seed, th
 from .icon import make_lite_icon
 from .manager import LiteManager
 from .appearance_page import AppearancePageMixin
+from .artwork_ui import ArtworkMixin
 from .background import BackgroundMixin
 from .old_versions import OldVersionsMixin
 from .quality import QualityMixin
@@ -42,7 +43,7 @@ LITE_WORDS = (
 )
 
 
-class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, OldVersionsMixin, StatusMixin, ExtrasMixin,
+class LiteApp(ArtworkMixin, PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, OldVersionsMixin, StatusMixin, ExtrasMixin,
               BackgroundMixin, UiStateMixin, App):
     WIP_TEXT = (f"{APP_NAME} is a Work In Progress.\n\nIt runs Auto Crest. Keep an eye on it "
                 "while it plays, and report anything odd.")

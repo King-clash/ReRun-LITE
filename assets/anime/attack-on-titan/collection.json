@@ -1,0 +1,44 @@
+{
+ "id": "attack-on-titan",
+ "name": "Attack on Titan",
+ "order": 8,
+ "accent": "#8A7A52",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "eren",
+    "name": "Eren Yeager",
+    "image": ""
+   },
+   {
+    "id": "levi",
+    "name": "Levi Ackerman",
+    "image": ""
+   },
+   {
+    "id": "mikasa",
+    "name": "Mikasa Ackerman",
+    "image": ""
+   },
+   {
+    "id": "survey-corps",
+    "name": "Survey Corps",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

@@ -24,7 +24,7 @@ PAGE_NAMES = {"Dashboard": ("Auto Crest", "Auto Crest", "home"), "Settings": ("G
 # Settings side list: one entry per script (the original page has a Script chooser; here the list is the chooser),
 # then Discord, then the app's own pages. A caption is drawn above the entries named in SETTINGS_HEADS.
 SETTINGS_SECTIONS = [(MAIN_SCRIPT, "Auto Crest"), ("palaces", "Palace Selector"),
-                     ("discord", "Discord"), ("appearance", "Appearance"), ("shortcuts", "Keyboard shortcuts"), ("app", "General"),
+                     ("discord", "Discord"), ("appearance", "Appearance"), ("artwork", "Artwork"), ("shortcuts", "Keyboard shortcuts"), ("app", "General"),
                      ("log", "Log")]
 SETTINGS_HEADS = {MAIN_SCRIPT: "Automation", "discord": "Alerts", "appearance": "App"}
 SCHEDULE_NOTE = ("Starts Crest on this emulator every day at that time, using your PC's clock. "
@@ -79,7 +79,7 @@ class PagesMixin:
         self._set_stage = tk.Frame(body, bg=C["bg"])
         self._set_stage.pack(side="left", fill="both", expand=True, padx=(px(8), 0))
         self._set_pages: dict[str, tk.Misc] = {}
-        for key, build in (("scripts", self._build_settings), ("palaces", self._build_palace_page), ("discord", self._build_discord), ("appearance", self._build_appearance_page),
+        for key, build in (("scripts", self._build_settings), ("palaces", self._build_palace_page), ("discord", self._build_discord), ("appearance", self._build_appearance_page), ("artwork", self._build_artwork_page),
                            ("shortcuts", self._build_shortcuts_page),
                            ("app", self._build_app_settings), ("log", self._build_log)):
             self._host = self._set_stage

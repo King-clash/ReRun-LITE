@@ -17,8 +17,8 @@ from pathlib import Path
 
 SEED = "seed"
 # (path inside the seed folder, what it is)
-PARTS = ("palaces.yaml", "images", "background", "data/lite/palace_schedule.json")
-SKIP = {"README.txt"}
+PARTS = ("palaces.yaml", "images", "background", "assets/anime", "data/lite/palace_schedule.json")
+SKIP = {"README.txt", ".gitkeep"}
 
 
 def bundle_seed() -> Path | None:

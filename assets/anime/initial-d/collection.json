@@ -1,0 +1,34 @@
+{
+ "id": "initial-d",
+ "name": "Initial D",
+ "order": 14,
+ "accent": "#E04A3C",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "ae86",
+    "name": "Toyota AE86",
+    "image": ""
+   },
+   {
+    "id": "takumi",
+    "name": "Takumi Fujiwara",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

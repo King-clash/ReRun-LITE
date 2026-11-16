@@ -1,0 +1,39 @@
+{
+ "id": "frieren",
+ "name": "Frieren: Beyond Journey's End",
+ "order": 10,
+ "accent": "#7FB8D6",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "frieren",
+    "name": "Frieren",
+    "image": ""
+   },
+   {
+    "id": "fern",
+    "name": "Fern",
+    "image": ""
+   },
+   {
+    "id": "stark",
+    "name": "Stark",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

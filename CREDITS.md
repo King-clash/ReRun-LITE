@@ -16,6 +16,15 @@ These files are included so the app works and looks right out of the box. They s
 are not covered by any licence this project may have. **If you own any of them and want one taken out, open an issue on
 the repository and it will be removed.**
 
+## Anime artwork
+
+ReRun LITE includes none. Anime, characters and artwork belong to their creators and studios; the 16 collections in
+`assets/anime/` only name them so you can add your own pictures. A picture is bundled only when `assets/anime/manifest.json`
+records its source address, its licence, what use is permitted and any attribution; each such picture is also listed here.
+Pictures you add yourself stay on your PC (`data/lite/artwork/`) and are your own responsibility.
+
+(None bundled yet.)
+
 ## Ours
 
 - `assets/*.mp4` (the other five themes' backgrounds, and Ahri's built-in one): original animations drawn by

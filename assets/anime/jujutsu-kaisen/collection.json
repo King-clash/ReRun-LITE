@@ -1,0 +1,44 @@
+{
+ "id": "jujutsu-kaisen",
+ "name": "Jujutsu Kaisen",
+ "order": 1,
+ "accent": "#5B6CFF",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "gojo",
+    "name": "Gojo Satoru",
+    "image": ""
+   },
+   {
+    "id": "sukuna",
+    "name": "Ryomen Sukuna",
+    "image": ""
+   },
+   {
+    "id": "yuji",
+    "name": "Yuji Itadori",
+    "image": ""
+   },
+   {
+    "id": "megumi",
+    "name": "Megumi Fushiguro",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

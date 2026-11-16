@@ -1,0 +1,44 @@
+{
+ "id": "evangelion",
+ "name": "Neon Genesis Evangelion",
+ "order": 5,
+ "accent": "#8E44D6",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "unit-01",
+    "name": "Evangelion Unit-01",
+    "image": ""
+   },
+   {
+    "id": "rei",
+    "name": "Rei Ayanami",
+    "image": ""
+   },
+   {
+    "id": "asuka",
+    "name": "Asuka Langley Soryu",
+    "image": ""
+   },
+   {
+    "id": "nerv",
+    "name": "NERV",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "id": "cowboy-bebop",
+ "name": "Cowboy Bebop",
+ "order": 11,
+ "accent": "#D9A441",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "spike",
+    "name": "Spike Spiegel",
+    "image": ""
+   },
+   {
+    "id": "faye",
+    "name": "Faye Valentine",
+    "image": ""
+   },
+   {
+    "id": "jet",
+    "name": "Jet Black",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

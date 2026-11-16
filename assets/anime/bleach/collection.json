@@ -1,0 +1,39 @@
+{
+ "id": "bleach",
+ "name": "Bleach: Thousand-Year Blood War",
+ "order": 4,
+ "accent": "#E8E8F0",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "ichigo",
+    "name": "Ichigo Kurosaki",
+    "image": ""
+   },
+   {
+    "id": "aizen",
+    "name": "Sosuke Aizen",
+    "image": ""
+   },
+   {
+    "id": "rukia",
+    "name": "Rukia Kuchiki",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

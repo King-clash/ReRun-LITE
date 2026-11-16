@@ -1,0 +1,39 @@
+{
+ "id": "chainsaw-man",
+ "name": "Chainsaw Man",
+ "order": 9,
+ "accent": "#E8553A",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "denji",
+    "name": "Denji",
+    "image": ""
+   },
+   {
+    "id": "power",
+    "name": "Power",
+    "image": ""
+   },
+   {
+    "id": "makima",
+    "name": "Makima",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

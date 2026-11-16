@@ -1,0 +1,39 @@
+{
+ "id": "demon-slayer",
+ "name": "Demon Slayer",
+ "order": 6,
+ "accent": "#1FA37A",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "tanjiro",
+    "name": "Tanjiro Kamado",
+    "image": ""
+   },
+   {
+    "id": "nezuko",
+    "name": "Nezuko Kamado",
+    "image": ""
+   },
+   {
+    "id": "rengoku",
+    "name": "Kyojuro Rengoku",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

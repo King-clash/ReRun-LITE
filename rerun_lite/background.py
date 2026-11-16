@@ -34,7 +34,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image, ImageTk
+from PIL import Image, ImageOps, ImageTk
 
 from rerun import errlog, ios
 from rerun.ios import C
@@ -42,6 +42,7 @@ from rerun.ios import C
 from . import palettes, theme, upscale
 
 VIDEO_TYPES = (".mp4", ".webm", ".mkv", ".avi", ".mov", ".gif")
+STILL_TYPES = (".webp", ".png", ".jpg", ".jpeg", ".bmp")        # anime artwork backgrounds (artwork.py) are still pictures
 DIMS = {"Light": 0.70, "Medium": 0.50, "Strong": 0.36}            # how much of the video is kept (the rest is the theme colour)
 SCRIMS = {"Off": 0.0, "Soft": 0.55, "Strong": 0.80}                # how far the video is pulled to the theme colour behind controls
 SPEEDS = {"Smooth (30 fps)": 30, "Normal (20 fps)": 20, "Light on the PC (12 fps)": 12}
@@ -100,13 +101,14 @@ def chosen_path(settings: dict, key: str) -> str:
     return str(settings.get(f"bg_path_{key}") or "")
 
 
-def cover(frame: np.ndarray, w: int, h: int) -> np.ndarray:
-    """Scale `frame` to fill w x h (cropping the overflow), like CSS background-size: cover."""
+def cover(frame: np.ndarray, w: int, h: int, anchor: tuple[float, float] = (0.5, 0.5)) -> np.ndarray:
+    """Scale `frame` to fill w x h (cropping the overflow), like CSS background-size: cover. `anchor` says which part
+    of the picture is kept when it overflows: (0.5, 0.5) the middle, (0.5, 0) the top, (1, 0.5) the right, and so on."""
     fh, fw = frame.shape[:2]
     s = max(w / fw, h / fh)
     nw, nh = max(int(round(fw * s)), w), max(int(round(fh * s)), h)
     r = cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_AREA if s < 1 else cv2.INTER_LINEAR)
-    x, y = (nw - w) // 2, (nh - h) // 2
+    x, y = int((nw - w) * anchor[0]), int((nh - h) * anchor[1])
     return r[y:y + h, x:x + w]
 
 
@@ -123,10 +125,11 @@ class Player(threading.Thread):
     `rects`, set by the window, are the places where labels and buttons sit)."""
 
     def __init__(self, path: Path, size: tuple[int, int], dim: float, fps: int, veil: str = "#000000",
-                 scrim: float = 0.0):
+                 scrim: float = 0.0, blur: float = 0.0, anchor: tuple[float, float] = (0.5, 0.5)):
         super().__init__(daemon=True)
         self.path, self.size, self.dim, self.fps = path, size, dim, fps
         self.veil, self.scrim = veil, scrim
+        self.blur, self.anchor = blur, anchor           # only used for a still picture (anime artwork)
         self.rects: tuple = ()
         self.frame: np.ndarray | None = None
         self.stamp = 0
@@ -159,7 +162,39 @@ class Player(threading.Thread):
         self._veil32 = np.array(_hex_bgr(self.veil), np.float32)
         self._key = key
 
+    def _run_still(self):
+        """A still picture (anime artwork): toned and blurred ONCE per window size or setting, then left alone, so it
+        costs nothing while Crest runs. The blur is a CPU blur on a reduced copy, never a per-frame effect."""
+        try:
+            with Image.open(self.path) as im:
+                src = cv2.cvtColor(np.array(ImageOps.exif_transpose(im).convert("RGB")), cv2.COLOR_RGB2BGR)
+        except Exception as e:  # noqa: BLE001 - a missing or damaged picture just means no background
+            self.error = f"Cannot open {self.path.name}: {e}"
+            return
+        sig = None
+        while not self._quit:
+            if not self.running.wait(0.25):
+                continue
+            w, h = max(self.size[0], 16), max(self.size[1], 16)
+            key = (w, h, self.dim, self.scrim, self.rects, self.veil, self.blur, self.anchor)
+            if key != sig:
+                out = cover(src, w, h, self.anchor)
+                if self.blur > 0:
+                    k = min(1.0, 960 / w)
+                    small = cv2.resize(out, (max(1, int(w * k)), max(1, int(h * k))), interpolation=cv2.INTER_AREA) if k < 1 else out
+                    small = cv2.GaussianBlur(small, (0, 0), max(0.1, self.blur * w / 1280 * k))
+                    out = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR) if k < 1 else small
+                self._weights(out.shape[1], out.shape[0])
+                toned = self._veil32 + (out.astype(np.float32) - self._veil32) * self._keep
+                self.frame = cv2.cvtColor(np.clip(toned, 0, 255).astype(np.uint8), cv2.COLOR_BGR2RGB)
+                self.stamp += 1
+                sig = key
+            time.sleep(0.1)
+
     def run(self):
+        if self.path.suffix.lower() in STILL_TYPES:
+            self._run_still()
+            return
         cap = cv2.VideoCapture(str(self.path))
         if not cap.isOpened():
             self.error = f"Cannot open {self.path.name}"
@@ -216,6 +251,8 @@ class Backdrop:
         self._cancel = threading.Event()
         self._rects_sig = None
         self.key = theme.ACTIVE
+        self.art_source = None                 # set by the window: () -> ArtBackground | None (artwork_ui.py)
+        self.art = None                        # the artwork background in use, if any
 
     # ------------------------------------------------------------ start / stop
     def veil(self) -> str:
@@ -226,16 +263,29 @@ class Backdrop:
         cur = theme.CURRENT
         return cur is not None and theme.is_custom() and cur.appearance.background != "off"
 
+    def _art(self):
+        """The anime artwork background to show instead of the look's video (None: show the video as before). Any error
+        in choosing it just means no artwork background."""
+        if self.art_source is None:
+            return None
+        try:
+            return self.art_source()
+        except Exception as e:  # noqa: BLE001
+            errlog.note("lite.art_source", e)
+            return None
+
     def start(self) -> bool:
         self.key = theme.ACTIVE
-        if self.active or not self.wanted():
+        art = self._art()
+        if self.active or not (art is not None or self.wanted()):
             return False
-        self.path = pick_video(self.root, theme.CURRENT)
+        self.art = art
+        self.path = art.path if art is not None else pick_video(self.root, theme.CURRENT)
         if self.path is None:
             return False
         self._cancel = threading.Event()
         self._upscaled = None
-        self.playing = self._prepare_source(self.path)
+        self.playing = self.path if art is not None else self._prepare_source(self.path)
         app = self.app
         app.update_idletasks()
         w, h = max(app.winfo_width(), 200), max(app.winfo_height(), 200)
@@ -261,6 +311,12 @@ class Backdrop:
         return True
 
     def _new_player(self, path: Path, w: int, h: int) -> Player:
+        art = self.art
+        if art is not None:                                     # a still picture: its own opacity, blur and position
+            p = Player(path, (w, h), art.opacity, 8, veil=self.veil(), scrim=SCRIMS.get(str(self.s.get("bg_scrim")), 0.55),
+                       blur=art.blur, anchor=art.anchor)
+            p.rects = self._rects_sig or ()
+            return p
         p = Player(path, (w, h), DIMS.get(str(self.s.get("bg_dim")), 0.50), int(self.s.get("bg_fps", 20)),
                    veil=self.veil(), scrim=SCRIMS.get(str(self.s.get("bg_scrim")), 0.55))
         p.rects = self._rects_sig or ()

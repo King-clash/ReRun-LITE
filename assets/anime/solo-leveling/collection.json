@@ -1,0 +1,39 @@
+{
+ "id": "solo-leveling",
+ "name": "Solo Leveling",
+ "order": 2,
+ "accent": "#7B4DFF",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "jinwoo",
+    "name": "Sung Jinwoo",
+    "image": ""
+   },
+   {
+    "id": "shadows",
+    "name": "Shadow Army",
+    "image": ""
+   },
+   {
+    "id": "hunters",
+    "name": "Hunters",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

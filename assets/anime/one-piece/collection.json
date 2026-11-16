@@ -1,0 +1,44 @@
+{
+ "id": "one-piece",
+ "name": "One Piece",
+ "order": 7,
+ "accent": "#E5B422",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "luffy",
+    "name": "Monkey D. Luffy",
+    "image": ""
+   },
+   {
+    "id": "zoro",
+    "name": "Roronoa Zoro",
+    "image": ""
+   },
+   {
+    "id": "sanji",
+    "name": "Sanji",
+    "image": ""
+   },
+   {
+    "id": "straw-hats",
+    "name": "Straw Hat Pirates",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

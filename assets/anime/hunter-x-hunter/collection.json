@@ -1,0 +1,44 @@
+{
+ "id": "hunter-x-hunter",
+ "name": "Hunter x Hunter",
+ "order": 13,
+ "accent": "#3FAE5A",
+ "artwork": {
+  "defaultBackground": "",
+  "header": "",
+  "preview": "",
+  "characters": [
+   {
+    "id": "gon",
+    "name": "Gon Freecss",
+    "image": ""
+   },
+   {
+    "id": "killua",
+    "name": "Killua Zoldyck",
+    "image": ""
+   },
+   {
+    "id": "kurapika",
+    "name": "Kurapika",
+    "image": ""
+   },
+   {
+    "id": "hisoka",
+    "name": "Hisoka Morow",
+    "image": ""
+   }
+  ]
+ },
+ "appearance": {
+  "backgroundOpacity": 0.18,
+  "blur": 2,
+  "position": "center",
+  "showBackground": true,
+  "showCharacterArtwork": true,
+  "showHeaderArtwork": true,
+  "showInstanceArtwork": false,
+  "showPanelArtwork": true,
+  "headerHeight": 64
+ }
+}

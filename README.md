@@ -67,6 +67,39 @@ Settings > **Appearance** changes everything at once, with no restart. The choic
 - **Whose they are:** the palace banners, the GIF and the game screenshots are other people's artwork, included so the
   app works out of the box. See [CREDITS.md](CREDITS.md); if you own one and want it removed, open an issue.
 
+## Anime artwork
+
+Settings > **Artwork** puts anime pictures in five places, for 16 anime. It is separate from the look: any anime's
+artwork works on Plain, Classic or any themed look, and picking a character never changes the layout, the controls or
+what Crest does. The choices are saved in `data/lite/ui.json`.
+
+**ReRun LITE ships no anime artwork.** No AI pictures, no invented characters, no made-up posters, and nothing
+downloaded from the web. The 16 collections (Jujutsu Kaisen, Solo Leveling, Naruto Akatsuki, Bleach, Evangelion, Demon
+Slayer, One Piece, Attack on Titan, Chainsaw Man, Frieren, Cowboy Bebop, Tokyo Ghoul, Hunter x Hunter, Initial D,
+Dragon Ball, Spy x Family) are ready, with their characters listed, but they have no pictures until you add your own:
+Settings > Artwork > an anime > **Add picture...** next to a character, the background or the banner. Your pictures are
+converted to WebP and kept on your PC in `data/lite/artwork/`. They are never uploaded, bundled or shared. The page
+asks you once to only add pictures you own or may use.
+
+- **Where it shows.** *Background:* a still picture behind the whole window (opacity 5-60%, blur 0-12, position
+  centre/top/bottom/left/right). It replaces the look's video only while one is chosen, and never touches the Live View.
+  *Header:* a banner under the Auto Crest title (height 40-140). *Instance:* a small portrait on each emulator row
+  (off by default). *Panels:* a thin strip under the Totals tiles, beside the numbers, never under them. *Previews:* each
+  anime's card in the gallery is a small picture of the real window drawn with that anime's art.
+- **The library.** A gallery of the 16 anime with a search box (anime and character names), a Favourites filter, a
+  character picker, alternate pictures per character, a favourite star, a reset for one anime or for everything, and one
+  switch that turns all artwork off. Nothing on a screen with no picture changes at all: with nothing installed the
+  window looks exactly as before.
+- **It never interrupts Crest.** A change is drawn in place: the window is not rebuilt and the emulators and Crest are
+  not touched, so it applies at once, even while Crest runs. Pictures are made ready on a worker thread; the same picture
+  is never decoded twice (kept in memory, with a thumbnail on disk in `data/lite/cache/artwork/`); the background is
+  blurred once on the CPU when you change it, not every frame; a missing or damaged picture just shows nothing.
+- **For a bundled picture** (only for one whose licence allows it): put it under `assets/anime/<anime>/<backgrounds|
+  characters|banners|previews>/` and record it with `py tools/artwork_tool.py add ...` (source address, licence, what
+  use is permitted, attribution). A picture with no complete, approved entry in `assets/anime/manifest.json` is never
+  shown. `py tools/artwork_tool.py check` lists any that would not be. Each anime's own settings (name, characters,
+  accent colour, default opacity and blur) are in `assets/anime/<anime>/collection.json`, the same structure for all 16.
+
 ## Everyday conveniences
 
 - **Start / Stop button** in the top bar, and **Ctrl+Enter** to start Crest on the selected emulator (or stop it
@@ -176,6 +209,12 @@ The copy of `rerun/` is not kept in step with ReRun automatically. A fix made th
   stop, unknown crest, dry run), the palace selector (game-day clock, weekday and cycle choices, never opening
   another palace, the import never overwriting), the video background (it plays behind the window, follows it and
   switches off), the status and extras, the window, and the update channel against a local server. Every test passes.
+- **Anime artwork:** the tests cover the 16 collections, that no picture is shown without a recorded right, adding,
+  converting and removing your own pictures, the saved choices, search, the drawing, a still-picture background, and the
+  window itself (every place the artwork appears, the Artwork page, a change leaving the window and Crest alone, any look,
+  missing and damaged pictures) on Linux under a virtual display. **Not checked:** the background on Windows (it uses the
+  same colour-key window as the video background, which cannot be tried on Linux) and how it looks with real artwork,
+  because none is installed.
 - **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window. Crest itself
   is the script that was verified live in ReRun.
 - **Not done:** no LITE update or release has been published yet. The exe is not code-signed, so Microsoft Defender

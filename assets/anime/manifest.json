@@ -1,0 +1,5 @@
+{
+ "schema": 1,
+ "note": "A picture in this folder is shown only when it is listed here with a source_url, a licence, permitted_use and \"approved\": true. Use tools/artwork_tool.py add. Fields: file (relative to assets/anime), collection, kind, character, label, width, height, source_url, licence, permitted_use, attribution, approved.",
+ "assets": []
+}
