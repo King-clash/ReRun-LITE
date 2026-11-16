@@ -1,53 +1,111 @@
 # ReRun LITE
 
-ReRun LITE is a small app for Grand Summoners on BlueStacks. It does two things:
+ReRun LITE (version 1.0.0) is a small app for Grand Summoners on BlueStacks. It does one job, and does it with
+a calm, good-looking window: **Auto Crest**. It farms a Crest Palace on Auto-Loop, scraps the crests you do not
+want, and stops (and tells you on Discord) when a wanted one drops. A daily palace selector can pick which palace
+to farm for you.
 
-1. **Auto Crest** - farms a Crest Palace on Auto-Loop, scraps the crests you do not want and stops (and
-   tells you on Discord) when a wanted one drops.
-2. **Dailies** - the daily and weekly checklist, including the tasks it can do for you (Login reward +
-   mail, and Raid tickets, which is Beta).
+This is its own project, with its own version number (1.0.0), history, releases and update address. It is not a
+fork of ReRun and nothing here changes or depends on the ReRun repository. (The code that does the farming was
+copied from ReRun 1.2.1 when this repository was created; see "Where the code comes from".)
 
-This is its own project. It is not a fork of ReRun, it has its own history, its own releases and its own
-update address, and nothing here changes or depends on the ReRun repository. (The code that does the
-farming was copied from ReRun 1.2.1 when this repository was created; see "Where the code comes from".)
-
-**Please read first:** Grand Summoners may not allow macros, bots or automation. Using ReRun LITE can
-lead to account limits, suspension or a permanent ban. The warning is on both feature tabs all the time.
+**Please read first:** Grand Summoners may not allow macros, bots or automation. Using ReRun LITE can lead to
+account limits, suspension or a permanent ban. The warning is on the Auto Crest tab all the time.
 
 ## What is in it
 
 | Tab | What it is |
 |---|---|
-| **Auto Crest** | Your emulators, Start / Dry Run / Pause / Stop, totals, crest counts (4+, Burst, Lv4, rate), instructions, Live View. An emulator always runs Crest, so there is no script chooser. |
-| **Dailies** | The daily and weekly checklist. It resets on the game clock (6 AM UTC-6). Mark Done / Undo / Confirm, your own tasks, Run and Run Next Due. Above it: which emulator the account plays on, and the weekly reset day. |
+| **Auto Crest** | Your emulators, Start / Dry Run / Pause / Stop, totals, crest counts (4+, Burst, Lv4, rate), instructions, Live View, and today's palace. |
 | **History** | Crests kept and scrapped (with pictures), refills, sessions and problems. |
-| **Templates** | Capture, test and import the pictures the scripts look for (for example your palace tile). |
-| **Settings** | A side list in three groups. **Automation:** Auto Crest, Login & Mail and Raid Tickets settings (one entry each, per emulator, plus the daily schedule). **Alerts:** Discord. **App:** General (theme, tray, start options, setup check, updates) and the Log. |
+| **Templates** | Capture, test and import the pictures Crest looks for (for example your palace tile). |
+| **Settings** | A side list in three groups. **Automation:** Auto Crest settings (per emulator, plus the daily schedule) and the Palace Selector. **Alerts:** Discord. **App:** General (tray, start options, setup check, updates, window, background) and the Log. |
 
-Also included: the key sign-in, F12 (stop everything) and F11 (pause/resume), the tray icon, 24/7 mode,
-Dry Run, Discord alerts with screenshots and the status board, the daily summary.
+Also included: the key sign-in, F12 (stop everything) and F11 (pause/resume), the tray icon, 24/7 mode, Dry Run,
+Discord alerts with screenshots and the status board, the daily summary.
+
+## Themes
+
+Settings > General > **Theme** lists nine choices. Six are LITE themes, each with its own colours and its own looping
+video behind the window. Three are ReRun's own: **Dark** and **Light** (its black and white themes, exactly as they
+were) and **Automatic** (follows Windows).
+
+| Theme | Look | Background |
+|---|---|---|
+| **Ahri** (default) | Indigo night, blossom pink, spirit cyan | Drifting petals, a moon, rising wisps; or your own video |
+| **Midnight** | Deep navy, calm blue | Twinkling stars and shooting stars |
+| **Sakura** | A light theme: soft cream, rose | Falling blossom |
+| **Ember** | Charcoal and warm orange | Rising sparks |
+| **Aurora** | Dark teal, mint | Slow green and violet lights |
+| **Neon** | Black, magenta and cyan | A scrolling grid and a low sun |
+
+- **A looping video plays behind the whole window** (the LITE themes only). It shows through the gaps between cards and
+  behind the text; cards, buttons and the live view stay solid. Clicking the video does nothing, so nothing ever covers
+  the window. It scales to any size, including maximised.
+- **Buttons and text stay crisp.** Text and rounded buttons drawn straight onto a video come out ragged, so the video is
+  softened in a patch behind every label and button, and the rounded corners are drawn without the dark dots the
+  widget kit's own filter leaves. (Settings > General > Background > *Behind buttons and text*: Off, Soft, Strong.)
+- **Your own video (Ahri):** drop a file (mp4, webm, mkv, avi, mov or gif) into the `background` folder next to ReRun
+  LITE and restart it. The first one in that folder plays. Or pick one for any theme in Settings > General > Background.
+- **Small videos are enlarged once.** A video under 1280 px wide (a GIF, say) is cleaned up (the GIF's dithering is
+  smoothed), enlarged to 1080p with Lanczos resampling and lightly sharpened, in the background (a few seconds, all CPU
+  cores), and kept in `data/lite/cache/`. The original plays until it is ready and is never changed. This makes a small
+  video look cleaner; it cannot add detail that was never there, so a bigger source always looks better.
+- Settings > General > **Background:** on/off, dimming (Light, Medium, Strong), behind buttons and text, smoothness
+  (12, 20 or 30 frames a second), enlarge small videos, pause while Crest is running, and the video file. The video
+  pauses by itself while the window is minimised.
+- Changing the theme asks to restart ReRun LITE (the choice is kept in `data/lite/ui.json`, not in `config.yaml`).
+- The built-in videos are original animations drawn by `tools/make_background.py`. Your own videos are yours: the
+  `background` folder is not part of the repository.
 
 ## Everyday conveniences
 
-- **Status chip** (top right): what LITE is doing now - *Ready*, *Needs setup*, *Crest running on Instance 1*,
-  *Paused* or *Error*. Click it to open Auto Crest (or, when something is missing, to go and fix it). The same
-  words are added to the window title, so you can read them from the taskbar.
-- **Tab badges:** a green dot on Auto Crest while it runs, the number of daily tasks still to do on Dailies
-  (a tick when they are all done), and an orange ! on Auto Crest, Templates or Settings when something is missing.
+- **Start / Stop button** in the top bar, and **Ctrl+Enter** to start Crest on the selected emulator (or stop it
+  when it is running). **Ctrl+.** stops everything.
+- **Status chip** (top right): *Ready*, *Needs setup*, *Crest running on Instance 1*, *Paused* or *Error*. Click it to
+  open Auto Crest (or, when something is missing, to go and fix it). The same words are added to the window title.
+- **Tab badges:** a dot on Auto Crest while it runs, an orange ! on Auto Crest, Templates or Settings when something
+  is missing.
 - **"Needs setup" strip** on Auto Crest: says what would stop Crest from starting (no emulator, missing template
   pictures, no palace chosen) with a button that goes straight to the fix. Nothing is sent to the emulator to
   check this.
-- **Keyboard:** Ctrl+1 to Ctrl+5 switch tabs, Ctrl+Tab / Ctrl+Shift+Tab step through them, Ctrl+, opens Settings,
+- **Today's palace** is shown under the warning on Auto Crest when the selector is on.
+- **Keyboard:** Ctrl+1 to Ctrl+4 switch tabs, Ctrl+Tab / Ctrl+Shift+Tab step through them, Ctrl+, opens Settings,
   F1 lists them all. Hovering a tab shows its shortcut.
 - **Pin on top** (Pin button, Ctrl+T, or Settings > General): keeps the window above the game while you watch.
-- **Remembered:** window size and position, the open tab, the open Settings entry and the pin.
-- **Settings > General > Window & files:** open the data folder, the on-top switch and the shortcut list.
+- **Sound on alerts** (off by default): a short beep when Crest sends an alert.
+- **Remembered:** window size and position, the open tab, the open Settings entry, the pin and the emulator you
+  picked.
+- **Settings > General > Window & files:** the on-top switch, sound, open the data folder, open the palace list and
+  the shortcut list.
+
+## Daily Crest Palace selector
+
+Settings > Automation > **Palace Selector** chooses which Crest Palace Crest opens each day, using a picture of
+that palace instead of one tile you captured by hand.
+
+- **`palaces.yaml`** (next to ReRun LITE) is the one palace list: one palace per line, `Palace name: images/file.png`.
+  Image paths are written only there. The pictures live in `images/`, each named after its palace.
+- **Import from GS Companion** copies every palace banner from GS Companion's data folder (`crest_palace.json` and
+  `images/stages/`) into `images/` as PNG, named after the palace, and adds the missing lines to the list. It never
+  overwrites a picture that is already there or changes a line that is already in the list; it tells you what it
+  left alone. The first import also fills the weekday table with a suggestion (the hardest palace open that day).
+- **Mode:** *Weekday table* (a palace for each day of the week), *Cycle the list* (one palace per day in list order,
+  wrapping; "Start with" says which one is today; "Only these" limits it), or *Off* (Crest uses its own palace
+  settings as before).
+- **The day** turns over at the game's reset, 6 AM UTC-6, not at your PC's midnight. The page shows today's palace
+  and whether its picture is there.
+- **Crest opens only today's palace.** The picture is looked for on the Crest Palace screen at any size (the
+  GS Companion banners are not the game's own pixels). If the picture file is missing, nothing is chosen for today,
+  or that palace is not on the screen (palaces rotate; the cycle does not know which days a palace is open), Crest
+  stops and says which palace and which file. It never opens a different one.
+- `palaces.yaml` and `images/` are game art and your own data, so they are not part of the repository.
 
 ## What is not in it
 
-No other scripts (quests, arena, raids, mines and so on), no custom routines, no Account Manager, no Units
-or Compendium, no GS Companion, and no `/units` or `/compendium` Discord commands. None of these can be
-started or opened from LITE.
+No other scripts (quests, arena, raids, mines, Login & Mail, Raid Tickets and so on), no checklist (the Dailies tab
+was removed in 1.0.0), no custom routines, no Account Manager, no Units or Compendium, no GS Companion, and no
+`/units` or `/compendium` Discord commands.
 
 ## Start it
 
@@ -55,59 +113,59 @@ You need Windows, Python 3.12 and BlueStacks. Install the libraries once with
 `py -m pip install -r requirements.txt`.
 
 - **From the source folder:** double-click `Run Rerun LITE.bat`, or run `py lite_main.py`.
-- **As an exe:** `py build_lite.py` builds `dist/RerunLite/RerunLite.exe`. `py build_lite.py --release`
-  builds a clean `release/RerunLite-<version>.zip` to share (blank config, its own Tesseract, nothing of
-  yours; it is checked before it is zipped).
+- **As an exe:** `py build_lite.py` builds `dist/RerunLite/RerunLite.exe` (with the templates, the built-in
+  background video and an empty `background` folder next to it). `py build_lite.py --release` builds a clean
+  `release/RerunLite-<version>.zip` to share (blank config, its own Tesseract, nothing of yours; it is checked
+  before it is zipped).
 
-LITE asks for a sign-in key. The first time, **Settings > App > Setup check** shows what is missing. Crest
-starts from the Home screen, so it needs either a picture of your palace tile (Templates tab:
-`crest_palace_target`, or one per weekday) or the palace's name in **Crest Settings > Palaces to farm**.
+LITE asks for a sign-in key. The first time, **Settings > General > Setup check** shows what is missing. Crest
+starts from the Home screen, so it needs either the palace selector, a picture of your palace tile (Templates
+tab: `crest_palace_target`, or one per weekday) or the palace's name in **Auto Crest settings > Palaces to farm**.
 
-If you also use the full ReRun, LITE can copy your settings, stats, crest log, History, key and checklist
-from its folder the first time it starts (the ReRun folder is not changed). LITE keeps its own small files
-in `data/lite/`.
+If you also use the full ReRun, LITE can copy your settings, stats, crest log, History and key from its folder
+the first time it starts (the ReRun folder is not changed). LITE keeps its own small files in `data/lite/`.
 
 ## Updates
 
-LITE checks its own update address, `https://king-clash.github.io/ReRun-LITE/lite/`, for a signed
-manifest. Until a LITE update has been published there, **Settings > App > Check Now** says "No ReRun LITE
-updates have been published yet." A copy run from source only reports a new version; the built exe also
-installs it. `py tools/publish_lite_update.py --exe release/RerunLite/RerunLite.exe` writes the update
-site files (`updates_site/lite/`) for the `gh-pages` branch.
+LITE checks its own update address, `https://king-clash.github.io/ReRun-LITE/lite/`, for a signed manifest, and
+compares it with LITE's own version (1.0.0). Until a LITE update has been published there, **Settings > General >
+Check Now** says "No ReRun LITE updates have been published yet." A copy run from source only reports a new
+version; the built exe also installs it. `py tools/publish_lite_update.py --exe release/RerunLite/RerunLite.exe`
+writes the update site files (`updates_site/lite/`) for the `gh-pages` branch.
 
 ## Where the code comes from
 
-The `rerun/` folder is a copy of the ReRun engine (version 1.2.1) that Crest and the checklist run on.
-`rerun_lite/` is what makes it LITE:
+The `rerun/` folder is a copy of the ReRun engine (version 1.2.1) that Crest runs on. `rerun_lite/` is what makes
+it LITE:
 
-- `manager.py` - `LiteManager`: the engine's `Manager` with the script list cut to Crest, Login & Mail and
-  Raid Tickets.
-- `app.py` - `LiteApp`: the window, built from five of the original pages.
-- `app.py` - `LiteApp`: start-up, the update, Discord and wording changes. It is built from three mixins:
-  `pages.py` (Auto Crest, Dailies and Settings pages), `status.py` (status chip, badges, shortcuts, pin, the
-  Window & files group) and `state.py` (window memory in `data/lite/ui.json`).
+- `manager.py` - `LiteManager`: the engine's `Manager` with the script list cut to Crest.
+- `app.py` - `LiteApp`: start-up, the update, Discord and wording changes. It is built from mixins: `pages.py`
+  (Auto Crest and Settings pages), `palace_page.py` (the Palace Selector page), `status.py` (status chip, badges,
+  shortcuts, pin, the Window & files group), `extras.py` (Start/Stop button, sound, remembered emulator, today's
+  palace), `palettes.py` (the themes as data), `background.py` (the video background and its settings), `upscale.py` (enlarging small videos) and `state.py` (window memory in
+  `data/lite/ui.json`).
+- `palaces.py` (the list, the day rule, the import) and `crest.py` (Crest with the selector).
 - `readiness.py` - the local "is it ready?" checks behind the chip, badges and the setup strip.
-- `theme.py` - the look (palette, outlined cards, the brand top bar with the five tabs, the grouped Settings
-  list, tooltips), applied at run time so `rerun/` stays exactly as copied.
-- `channel.py` - the update channel; `content.py` - the templates LITE ships; `bot.py`, `tray.py`,
-  `icon.py` - the Discord bot, tray icon and icon.
-- `lite_main.py` (entry point), `build_lite.py` and `build.py` (build), `tools/` (build log, update site),
-  `tests/test_lite.py` (25 tests: `py tests/test_lite.py`).
+- `theme.py` - the look (palette, outlined cards, the brand top bar, the grouped Settings list, tooltips), applied
+  at run time so `rerun/` stays exactly as copied.
+- `channel.py` - the update channel; `content.py` - the templates LITE ships; `bot.py`, `tray.py`, `icon.py` - the
+  Discord bot, tray icon and icon.
+- `lite_main.py` (entry point), `build_lite.py` and `build.py` (build), `tools/` (build log, update site, the
+  background and how-to video makers), `tests/` (`py tests/test_lite.py`, `py tests/test_palaces.py`).
 
-The copy of `rerun/` is not kept in step with ReRun automatically. A fix made there has to be brought over
-by hand.
+The copy of `rerun/` is not kept in step with ReRun automatically. A fix made there has to be brought over by hand.
 
 ## What has and has not been checked
 
-- **Checked automatically:** `tests/test_lite.py` drives Auto Crest and the Dailies' Login & Mail task
-  against a simulated game (scrap and redeploy, keep and stop, unknown crest, dry run, checklist states,
-  no duplicate runs), builds the window, and tests the update channel against a local server. 25 of 25 pass.
-- **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window.
-  Crest and Login & Mail are the same scripts that were verified live in ReRun; the Dailies checklist
-  starting them, Raid Tickets, and Dry Run on a real emulator have not been (they are Beta in ReRun too).
-- **Not done:** no LITE update or release has been published yet. The exe is not code-signed, so Microsoft
-  Defender may complain.
-- **Sign-in and update signing use ReRun's key system.** The sign-in keys and the update signature come
-  from the same key pair ReRun uses, so a key that works in ReRun works here.
-- The exe still contains the engine's other code, but LITE has no way to start or show it. The download is
-  about as large as ReRun's, because the big parts (image matching, the text reader) are what Crest needs.
+- **Checked automatically:** the tests drive Auto Crest against a simulated game (scrap and redeploy, keep and
+  stop, unknown crest, dry run), the palace selector (game-day clock, weekday and cycle choices, never opening
+  another palace, the import never overwriting), the video background (it plays behind the window, follows it and
+  switches off), the status and extras, the window, and the update channel against a local server. Every test passes.
+- **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window. Crest itself
+  is the script that was verified live in ReRun.
+- **Not done:** no LITE update or release has been published yet. The exe is not code-signed, so Microsoft Defender
+  may complain.
+- **Sign-in and update signing use ReRun's key system.** The sign-in keys and the update signature come from the
+  same key pair ReRun uses, so a key that works in ReRun works here.
+- The exe still contains the engine's other code, but LITE has no way to start or show it. The download is about as
+  large as ReRun's, because the big parts (image matching, the text reader) are what Crest needs.

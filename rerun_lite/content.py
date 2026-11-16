@@ -1,4 +1,4 @@
-"""Which template pictures ReRun LITE ships: the ones Crest, Login & Mail and Raid Tickets declare
+"""Which template pictures ReRun LITE ships: the ones Crest declares
 (each script's own list plus the shared pop-up templates) - nothing for the scripts LITE does not have.
 Used by build_lite.py (what goes next to RerunLite.exe) and tools/publish_lite_update.py (what a LITE
 update holds), so both always agree."""

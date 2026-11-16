@@ -1,4 +1,4 @@
-"""Build RerunLite.exe - ReRun LITE (Auto Crest and Dailies only).
+"""Build RerunLite.exe - ReRun LITE (Auto Crest).
 
     py build_lite.py                 dist/RerunLite/RerunLite.exe - your own copy: your config.yaml
                                      is copied next to it
@@ -45,7 +45,7 @@ def write_version_file(path: Path, version: str) -> Path:
   kids=[
     StringFileInfo([StringTable('040904B0', [
       StringStruct('CompanyName', 'Rerun'),
-      StringStruct('FileDescription', 'ReRun LITE - Auto Crest and Dailies for Grand Summoners on BlueStacks'),
+      StringStruct('FileDescription', 'ReRun LITE - Auto Crest for Grand Summoners on BlueStacks'),
       StringStruct('FileVersion', '{version}'),
       StringStruct('InternalName', 'RerunLite'),
       StringStruct('OriginalFilename', 'RerunLite.exe'),
@@ -59,15 +59,45 @@ def write_version_file(path: Path, version: str) -> Path:
     return path
 
 
+def write_splash(path: Path) -> Path:
+    """The picture the one-file exe shows while it unpacks itself (before any Python runs). The window that follows it
+    (rerun_lite/splash.py) has the real progress bar; this one only says that something is happening."""
+    from PIL import Image, ImageDraw, ImageFont
+    w, h = 460, 214
+    img = Image.new("RGB", (w, h), "#0B0919")
+    d = ImageDraw.Draw(img)
+
+    def font(size: int, bold: bool = False):
+        for name in (("segoeuib.ttf", "arialbd.ttf") if bold else ("segoeui.ttf", "arial.ttf")):
+            try:
+                return ImageFont.truetype(str(Path("C:/Windows/Fonts") / name), size)
+            except OSError:
+                continue
+        return ImageFont.load_default()
+    d.rectangle((0, 0, w - 1, h - 1), outline="#2C2449")
+    d.rectangle((30, 30, 84, 56), fill="#8FE9F0")
+    d.text((57, 43), "LITE", font=font(13, True), fill="#052229", anchor="mm")
+    d.text((98, 43), "ReRun", font=font(22, True), fill="#F7F1FB", anchor="lm")
+    d.text((30, 82), "Starting ReRun LITE", font=font(13), fill="#A89DC6", anchor="lm")
+    d.text((30, 112), "Unpacking…", font=font(14), fill="#F7F1FB", anchor="lm")
+    d.rectangle((30, 136, w - 30, 146), fill="#241C3F")
+    d.rectangle((30, 136, 30 + 70, 146), fill="#F0609A")
+    d.text((30, 168), "The first start after an update takes a few seconds longer", font=font(12), fill="#A89DC6", anchor="lm")
+    img.save(path)
+    return path
+
+
 def build_exe(dist: Path) -> bool:
-    from rerun import __version__
+    from rerun_lite import __version__
     from rerun_lite.icon import write_lite_ico
     work = Path(tempfile.mkdtemp(prefix="rlb_"))  # short path for PyInstaller's scratch files
     icon = write_lite_ico(work / "rerunlite.ico")
     vfile = write_version_file(work / "version_info.txt", __version__)
+    splash = write_splash(work / "splash.png")
     cmd = [
         sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
         "--name", EXE, "--icon", str(icon), "--version-file", str(vfile), "--noupx",
+        "--splash", str(splash),                       # shown while the exe unpacks, before Python starts
         "--distpath", str(dist), "--workpath", str(work / "build"),
         "--specpath", str(work),
         # App icon picture, loaded at run time for the window (and tray).
@@ -100,6 +130,11 @@ def copy_content(dist: Path) -> None:
     (dist / "lite_content_baseline.json").write_text(json.dumps({"files": baseline}, indent=1), encoding="utf-8")
     if (ROOT / README).exists():
         shutil.copy2(ROOT / README, dist / "README.md")
+    (dist / "assets").mkdir(exist_ok=True)                                  # the built-in background videos
+    for video in sorted((ROOT / "assets").glob("*.mp4")):                   # every theme's own animation
+        shutil.copy2(video, dist / "assets" / video.name)
+    (dist / "background").mkdir(exist_ok=True)                              # drop your own background video here
+    shutil.copy2(ROOT / "background" / "README.txt", dist / "background" / "README.txt")
     INFO["templates"] = len(files)
     INFO["routines"] = 0
 
@@ -137,7 +172,7 @@ def release() -> int:
     """A clean ReRun LITE to give away: the exe, LITE's templates, the readme, a blank config, its own
     Tesseract - and nothing of yours. Checked (build.py's leak check, plus LITE's own folders) before it
     is zipped."""
-    from rerun import __version__
+    from rerun_lite import __version__
     out = RELEASE / EXE
     if out.exists():
         shutil.rmtree(out)
@@ -167,7 +202,7 @@ def release() -> int:
 
 
 def main() -> int:
-    from rerun import __version__
+    from rerun_lite import __version__
     INFO["version"] = __version__
     if "--release" in sys.argv:
         return release()
@@ -178,6 +213,9 @@ def main() -> int:
         return 1
     if (ROOT / "config.yaml").exists():
         shutil.copy2(ROOT / "config.yaml", dist / "config.yaml")
+    for video in (ROOT / "background").glob("*"):                      # your own background video(s) come along in a local
+        if video.is_file() and video.name != "README.txt":             # build (a release zip never carries them)
+            shutil.copy2(video, dist / "background" / video.name)
     print(f"\nBuilt {dist / (EXE + '.exe')}")
     return 0
 

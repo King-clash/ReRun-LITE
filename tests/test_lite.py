@@ -23,7 +23,8 @@ from rerun.manager import Manager  # noqa: E402
 from rerun.safety import TOS_WARNING  # noqa: E402
 from rerun.scripts import SCRIPTS, CrestScript, LoginMailScript  # noqa: E402
 from rerun_lite import APP_NAME, LITE_SCRIPTS, MAIN_SCRIPT, channel, content  # noqa: E402
-from rerun_lite.app import NOT_LINKED, SCHEDULE_NOTE, LiteApp, bring_accounts  # noqa: E402
+from rerun_lite import __version__ as LITE_VERSION  # noqa: E402
+from rerun_lite.app import SCHEDULE_NOTE, LiteApp  # noqa: E402
 from rerun_lite.manager import LiteManager  # noqa: E402
 from tests.test_scripts import Screen, Sim, background, crest_equip_screen, fast, patch  # noqa: E402
 
@@ -89,8 +90,10 @@ def pump(app, n: int = 6) -> None:
         time.sleep(0.02)
 
 
-def open_lite(instances: list[dict] | None = None):
+def open_lite(instances: list[dict] | None = None, backdrop: bool = False):
     root = lite_root(instances, real_templates=True)
+    (root / "data" / "lite").mkdir(parents=True, exist_ok=True)
+    (root / "data" / "lite" / "ui.json").write_text(json.dumps({"bg_on": backdrop}), encoding="utf-8")   # no video unless asked
     m, inst = manager(root)
     app = LiteApp(m)
     app.errors = []
@@ -109,14 +112,14 @@ def close(app, root) -> None:
 
 
 # ---------------------------------------------------------------- what exists in LITE
-def test_lite_offers_only_crest_and_the_two_dailies_scripts():
+def test_lite_offers_only_crest():
     root = lite_root()
     shutil.copytree(ROOT / "routines", root / "routines")      # even with custom routines present
     try:
         m, inst = manager(root)
-        assert tuple(m.scripts_available()) == LITE_SCRIPTS == ("crest", "login_mail", "raid_tickets")
-        assert list(m.scripts_available().values()) == ["Crest", "Login & Mail", "Raid Tickets (Beta)"]
-        for other in ("any_quest", "arena", "chain", "queue", "compendium_counter", "custom:example_tap_through"):
+        assert tuple(m.scripts_available()) == LITE_SCRIPTS == ("crest",)
+        assert list(m.scripts_available().values()) == ["Crest"]
+        for other in ("any_quest", "arena", "chain", "queue", "compendium_counter", "login_mail", "raid_tickets", "custom:example_tap_through"):
             assert m.start(inst, other) == f"Unknown script '{other}'", other
         assert m.instances[inst].status == "idle" and m.instances[inst].script == MAIN_SCRIPT
     finally:
@@ -140,7 +143,11 @@ def test_the_full_app_is_unchanged_by_lite_being_loaded():
 
 def test_lite_runs_the_original_code_not_a_copy():
     """Every piece of Auto Crest and Dailies is the full app's own object."""
-    assert SCRIPTS["crest"] is CrestScript and SCRIPTS["login_mail"] is LoginMailScript
+    from rerun_lite.crest import LiteCrest
+    assert SCRIPTS["crest"] is LiteCrest and issubclass(LiteCrest, CrestScript) and SCRIPTS["login_mail"] is LoginMailScript
+    own_methods = {k for k, v in vars(LiteCrest).items() if callable(v) and not k.startswith("__")}
+    assert own_methods == {"selector_choice", "selector_on", "check_nav_templates", "_stop_for", "_selector_root",
+                           "handle_crest_palace_screen"}, own_methods          # Crest itself is the original
     for name in ("_record_session", "script_settings", "save_script_settings", "notify", "stop", "pause",
                  "resume", "scheduler_tick", "template_checklist", "missing_templates", "totals", "energy"):
         assert getattr(LiteManager, name) is getattr(Manager, name), name
@@ -155,7 +162,7 @@ def test_lite_runs_the_original_code_not_a_copy():
         m, _ = manager(root)
         assert type(m.ops.checklist) is Checklist
         own = "".join(p.read_text(encoding="utf-8") for p in (ROOT / "rerun_lite").glob("*.py"))
-        assert "class CrestScript" not in own and "BUILTIN_TASKS" not in own and "def handle_" not in own
+        assert "class CrestScript" not in own and "BUILTIN_TASKS" not in own and own.count("def handle_") == 1
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -175,7 +182,7 @@ def test_an_emulator_is_a_crest_emulator_and_config_yaml_keeps_its_own_script():
         from datetime import datetime
         assert m.scheduler_tick(datetime(2026, 11, 16, 6, 5))[0] == "start A" and m.instances["A"].script == "crest"
         m.instances["A"].status = "idle"
-        assert m.start("A", "login_mail").startswith("Started Login & Mail on A")
+        assert m.start("A", "login_mail") == "Unknown script 'login_mail'"
         m.instances["A"].status = "idle"
         m.set_instances(m.config["instances"] + [{"name": "C", "serial": "127.0.0.1:5575", "script": "crest"}])
         m.save_config()
@@ -190,15 +197,16 @@ def test_lite_ships_only_the_templates_its_scripts_use():
     files = content.lite_files(ROOT)
     names = {Path(rel).stem for rel in files}
     declared = set(content.template_names())
-    assert names <= declared and 55 <= len(names) == len(list((ROOT / "templates").glob("*.png")))
-    for must in ("equip_crest_screen", "crest_icon_lv4plus", "redeploy_button", "mail_chest", "claim_all_button"):
+    assert names <= declared and 45 <= len(names) == len(list((ROOT / "templates").glob("*.png")))
+    for must in ("equip_crest_screen", "crest_icon_lv4plus", "redeploy_button"):
         assert must in names, must
     assert not [n for n in names if n.startswith(("arena_", "mines_", "gc_", "compendium_"))]
+    assert "mail_chest" not in names and "claim_all_button" not in names          # Login & Mail is not in LITE
     root = lite_root(real_templates=True)
     try:
         m, _ = manager(root)
-        # the two tested scripts need nothing more than what LITE ships (Raid Tickets is Beta in the full app too)
-        assert m.missing_templates("crest") == [] and m.missing_templates("login_mail") == []
+        # Crest needs nothing more than what LITE ships
+        assert m.missing_templates("crest") == []
         meta = json.loads((root / "templates" / "_meta.json").read_text(encoding="utf-8"))
         assert meta and set(meta) <= names
     finally:
@@ -290,99 +298,16 @@ def test_crest_dry_run_from_lite_taps_nothing_and_is_recorded_as_one():
 
 
 # ---------------------------------------------------------------- Dailies, through LITE
-class LoginSim(Sim):
-    def tap(self, x, y):
-        if self.current in ("title", "bonus"):
-            self.tapped.append(self.current)
-            self.go("bonus" if self.current == "title" else "home")
-            return
-        super().tap(x, y)
-
-
-def login_sim() -> LoginSim:
-    """The game of tests/test_scripts.test_login_mail_claims_until_empty."""
-    screens = {
-        "title": Screen([], extra=[("game_start_screen", 290, 1040)]),
-        "bonus": Screen([], extra=[("total_sign_in_bonus", 280, 160)]),
-        "home": Screen([("mail_chest", 550, 192)]),
-        "mail_full": Screen([("claim_all_button", 450, 992), ("mail_close_button", 575, 64)]),
-        "claimed": Screen([("claim_ok_button", 300, 800)]),
-        "mail_empty": Screen([("claim_all_button_dim", 450, 992), ("mail_close_button", 575, 64)]),
-    }
-    return LoginSim(screens, "title", {("home", "mail_chest"): "mail_full",
-                                       ("mail_full", "claim_all_button"): "claimed",
-                                       ("claimed", "claim_ok_button"): "mail_empty",
-                                       ("mail_empty", "mail_close_button"): "home"})
-
-
-def test_dailies_run_does_login_and_mail_then_waits_for_your_confirmation():
-    fast()
-    root = lite_root()
-    try:
-        m, inst = manager(root)
-        sim_templates(m, "login_mail")
-        m.save_script_settings(inst, "login_mail", {"mode_247": False, "claim_limit": 30})
-        aid, cl = m.ops.store.active_id, m.ops.checklist
-        assert m.ops.store.get(aid)["instance"] == inst, "the first account is linked to the only emulator"
-        dev = login_sim()
-        m.instances[inst].device = dev
-        assert [r["id"] for r in cl.due_automatable(aid, m.scripts_available())] == ["login_reward", "raid_tickets"]
-        msg = m.ops.run_task(aid, "login_reward")
-        assert msg == f"Started Login & Mail on {inst} for Main", msg
-        wait_done(m, inst)
-        assert dev.tapped == ["title", "bonus", "mail_chest", "claim_all_button", "claim_ok_button",
-                              "mail_close_button"], dev.tapped
-        rows = {r["id"]: r for r in cl.rows(aid)}
-        assert rows["login_reward"]["state"] == "unverified", rows["login_reward"]
-        assert m.instances[inst].script == "crest", "after a Dailies task the emulator is a Crest emulator again"
-        assert "already done" in m.ops.run_task(aid, "login_reward")          # no duplicate run
-        cl.confirm(aid, "login_reward")
-        assert {r["id"]: r for r in cl.rows(aid)}["login_reward"]["state"] == "completed"
-        ses = m.ops.store.sessions(aid)
-        assert [(s["script"], s["status"]) for s in ses] == [("login_mail", "completed")], ses
-        assert "manual task" in m.ops.run_task(aid, "daily_missions")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
-
-
-def test_dailies_checklist_is_the_original_checklist():
-    """Game-clock resets, manual done/undo, your own tasks and priorities work on LITE's manager."""
-    from datetime import datetime
-    from rerun.checklist import GAME_TZ
-    root = lite_root()
-    try:
-        m, _ = manager(root)
-        aid, cl = m.ops.store.active_id, m.ops.checklist
-        assert [d["id"] for d in cl.definitions(aid)] == ["login_reward", "daily_missions", "weekly_shop", "free_summon",
-                                                          "weekly_missions", "raid_tickets"]
-        day = datetime(2026, 11, 16, 12, 0, tzinfo=GAME_TZ).timestamp()
-        cl.mark_done(aid, "daily_missions", now=day)
-        state = lambda t, tid: {r["id"]: r for r in cl.rows(aid, t)}[tid]["state"]       # noqa: E731
-        assert state(day, "daily_missions") == "completed"
-        assert state(datetime(2026, 11, 17, 5, 59, tzinfo=GAME_TZ).timestamp(), "daily_missions") == "completed"
-        assert state(datetime(2026, 11, 17, 6, 1, tzinfo=GAME_TZ).timestamp(), "daily_missions") == "available"
-        cl.undo(aid, "daily_missions")
-        assert state(day, "daily_missions") == "available"
-        tid = cl.add_task(aid, "Guild check-in", "weekly", 1)
-        assert cl.definitions(aid)[0]["id"] == tid and cl.summary(aid)["weekly"]["total"] == 3
-        cl.remove_task(aid, "free_summon")
-        assert "free_summon" not in [d["id"] for d in cl.definitions(aid)]
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
-
-
-# ---------------------------------------------------------------- the window
 def test_window_has_the_two_features_and_only_their_tools():
     root, m, inst, app = open_lite()
     try:
-        assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "Dailies", "History", "Templates", "Settings"]
+        assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "History", "Templates", "Settings"]
         assert app.title() == APP_NAME
-        assert [k for k, _ in app._set_nav._items] == ["crest", "login_mail", "raid_tickets", "discord", "app", "log"]
+        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "app", "log"]
         for attr in ("_am_nav", "_farm_nav", "_tab_accounts", "_tab_farming", "unit_tree", "companion"):
             assert not hasattr(app, attr), f"{attr}: a page LITE must not build"
-        crest_page, dailies_page = app.nb._pages[app._tab_crest], app.nb._pages[app._tab_dailies]
-        for page in (crest_page, dailies_page):                  # the warning is on both feature pages
-            assert TOS_WARNING in texts(page)
+        crest_page = app.nb._pages[app._tab_crest]
+        assert TOS_WARNING in texts(crest_page)
         shown = texts(crest_page)
         assert "Auto Crest" in shown and "Dashboard" not in shown
         for word in ("INSTANCES", "TOTALS", "CRESTS", "LIVE VIEW", "INSTRUCTIONS", "4+ crests", "Crest Burst"):
@@ -393,7 +318,7 @@ def test_window_has_the_two_features_and_only_their_tools():
         assert group.winfo_manager() == "" and app.comp_line.winfo_manager() == "", "no script chooser, no Compendium line"
         assert "CREST FARMING" in app.instr.get("1.0", "end")
         for box in (app.set_script, app.tpl_script):
-            assert box["values"] == ["Crest", "Login & Mail", "Raid Tickets (Beta)"] and box.get() == "Crest"
+            assert box["values"] == ["Crest"] and box.get() == "Crest"
         assert not app.errors, app.errors
     finally:
         close(app, root)
@@ -416,7 +341,7 @@ def test_auto_crest_buttons_start_crest_through_the_original_checks():
         m.instances[inst].thread.join(5)
         assert started == [(inst, "crest", False), (inst, "crest", True), (inst, "crest", False)], started
         assert app._dashboard_in_view()
-        app.nb.select(app._tab_dailies)
+        app.nb.select(app._tab_settings)
         assert not app._dashboard_in_view()
         assert not app.errors, app.errors
     finally:
@@ -424,92 +349,16 @@ def test_auto_crest_buttons_start_crest_through_the_original_checks():
         close(app, root)
 
 
-def test_dailies_tab_draws_the_checklist_and_its_buttons_work():
-    root, m, inst, app = open_lite()
-    asked = []
-    real_confirm = ios.confirm
-    ios.confirm = lambda *a, **k: asked.append(a[1]) or False
-    try:
-        aid, cl = m.ops.store.active_id, m.ops.checklist
-        app.nb.select(app._tab_dailies)
-        pump(app)
-        shown = texts(app._am_inner)
-        for word in ("Daily & weekly checklist", "Login reward + mail   (priority 1)", "Automated by Login & Mail",
-                     "Automated by Raid Tickets (Beta)", "Weekly shop items   (priority 2)", "Available"):
-            assert word in shown, (word, shown[:12])
-        assert app._dl_inst.get() == inst and app._dl_week.get() == "Monday"
-        assert app._dl_account.winfo_manager() == "", "one account: no account picker"
-        app._am_task(aid, "mark_done", "daily_missions")
-        pump(app)
-        assert {r["id"]: r for r in cl.rows(aid)}["daily_missions"]["state"] == "completed"
-        assert "Completed" in texts(app._am_inner)
-        # Run on the Beta task asks first (and "no" starts nothing); Run on the tested one starts Login & Mail
-        app.am_run_task(aid, "raid_tickets")
-        assert asked and "has not been run on a real game" in asked[0] and m.instances[inst].status == "idle"
-        started = []
-        m._worker = lambda i: started.append((i.script, i.task, i.account))
-        app.am_run_next(aid)
-        m.instances[inst].thread.join(5)
-        assert started == [("login_mail", "login_reward", aid)], started
-        assert app.shown[-1] == f"Started Login & Mail on {inst} for Main"
-        m.instances[inst].status = "idle"
-        cl.cancel_run(aid, "login_reward")
-        # the two selectors LITE adds: weekly reset day and the emulator the account plays on
-        app._dl_week.set("Thursday")
-        app._dl_set_week()
-        assert m.ops.store.get(aid)["prefs"]["week_reset_weekday"] == 3
-        app._dl_inst.set(NOT_LINKED)
-        app._dl_link()
-        assert m.ops.store.get(aid)["instance"] == ""
-        app.am_run_task(aid, "login_reward")
-        assert "Runs on" in app.shown[-1] and "Account Manager" not in app.shown[-1], app.shown[-1]
-        app._dl_inst.set(inst)
-        app._dl_link()
-        assert m.ops.store.get(aid)["instance"] == inst
-        # a second account brings the picker back; switching redraws the other account's checklist
-        other = m.ops.store.create("Alt")
-        pump(app, 10)
-        assert app._dl_account.winfo_manager() == "pack" and app._am_picker["values"] == ["Main", "Alt"]
-        app._am_picker.set("Alt")
-        app._am_pick()
-        pump(app)
-        assert m.ops.store.active_id == other and app._dl_inst.get() == NOT_LINKED
-        assert "Completed" not in texts(app._am_inner)
-        assert not app.errors, app.errors
-    finally:
-        ios.confirm = real_confirm
-        m.instances[inst].status = "idle"
-        close(app, root)
-
-
-def test_checklist_redraws_when_the_game_day_turns_over():
-    root, m, inst, app = open_lite()
-    try:
-        aid = m.ops.store.active_id
-        m.ops.checklist.mark_done(aid, "daily_missions", now=time.time() - 3 * 86400)   # done three game days ago
-        pump(app, 10)
-        assert app._dl_signature() == app._dl_sig
-        rec = m.ops.store.get(aid)["tasks"]["daily_missions"]
-        rec["last_done"] = time.time()                       # as if it was done just now, without any event
-        assert app._dl_signature() != app._dl_sig
-        app._ticks = 19
-        app._tick()
-        assert app._dl_signature() == app._dl_sig and "Completed" in texts(app._am_inner)
-        assert not app.errors, app.errors
-    finally:
-        close(app, root)
-
-
 def test_settings_pages_are_the_originals_with_lite_names_and_places():
     from rerun.setup_check import Check
     root, m, inst, app = open_lite()
     try:
-        app.open_script_settings("login_mail")
+        app.open_script_settings("crest")
         pump(app)
-        assert app.nb.index() == app._tab_settings and app._set_nav.current == "login_mail"
-        assert app.set_script.get() == "Login & Mail" and set(app.form_vars) == {"mode_247", "claim_limit"}
+        assert app.nb.index() == app._tab_settings and app._set_nav.current == "crest"
+        assert app.set_script.get() == "Crest" and {"runs", "keep", "start_home", "palace_name"} <= set(app.form_vars)
         assert app.form.winfo_children()[-1].footer.cget("text") == SCHEDULE_NOTE
-        assert app._rs_title.cget("text") == "Login & Mail Settings"
+        assert app._rs_title.cget("text") == "Crest Settings"
         app.open_script_settings("crest")
         assert app.set_script.get() == "Crest" and {"runs", "keep", "start_home", "palace_name"} <= set(app.form_vars)
         app.form_vars["keep"].set("Lv4 and better")
@@ -520,10 +369,10 @@ def test_settings_pages_are_the_originals_with_lite_names_and_places():
         app.nb.select(app._tab_discord)
         assert app.nb.index() == app._tab_settings and app._set_nav.current == "discord"
         words = texts(app._set_pages["discord"]) + texts(app._set_pages["app"])
-        assert f"Connect When {APP_NAME} Starts" in words and f"{APP_NAME} {updates.__version__}" in words
+        assert f"Connect When {APP_NAME} Starts" in words and f"{APP_NAME} {LITE_VERSION}" in words
         assert not [w for w in words if "Rerun" in w], [w for w in words if "Rerun" in w]
-        app._set_update_status("Up to date (Rerun 1.2.1)")
-        assert app.upd_status.cget("text") == f"Up to date ({APP_NAME} 1.2.1)"
+        app._set_update_status("Up to date (Rerun 1.0.0)")
+        assert app.upd_status.cget("text") == f"Up to date ({APP_NAME} 1.0.0)"
         # setup check: LITE's own two tested scripts, not Any Quest
         app._setup_body = tk.Frame(app)
         checks = [Check("Templates", True, "All templates for Any Quest, Crest and Login & Mail are captured.")]
@@ -541,14 +390,14 @@ def test_lite_keeps_its_window_memory_out_of_config_yaml():
     try:
         m.save_config()
         before = (root / "config.yaml").read_text(encoding="utf-8")
-        app.nb.select(app._tab_dailies)
+        app.nb.select(app._tab_templates)
         app._save_ui_state()
         assert (root / "config.yaml").read_text(encoding="utf-8") == before
         ui = json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))
-        assert ui["tab"] == app._tab_dailies and "x" in ui["geometry"]
+        assert ui["tab"] == app._tab_templates and "x" in ui["geometry"]
         app.nb.select(0)
         app._restore_tab()
-        assert app.nb.index() == app._tab_dailies
+        assert app.nb.index() == app._tab_templates
     finally:
         close(app, root)
 
@@ -559,7 +408,6 @@ def test_status_chip_badges_and_title_follow_what_the_emulators_do():
         app._refresh_status()
         assert "Needs setup" in app.nb.chip.cget("text")                  # no palace chosen yet
         assert app.nb._badges[app._tab_crest].cget("text") == "!" and app._ready_notice.winfo_manager()
-        assert app.nb._badges[app._tab_dailies].cget("text").isdigit()    # daily tasks still to do
         m.instances[inst].status = "running"
         app._status_sig = None
         app._refresh_status()
@@ -591,7 +439,6 @@ def test_readiness_checks_are_local_and_name_the_fix():
         assert "settings" not in {p.fix for p in readiness.crest_problems(m, inst)}   # not needed without Home start
         sim_templates(m, "crest")
         assert not [p for p in readiness.crest_problems(m, inst) if p.fix == "templates"]
-        assert readiness.dailies_left(m.ops) >= 1
     finally:
         close(app, root)
 
@@ -599,27 +446,210 @@ def test_readiness_checks_are_local_and_name_the_fix():
 def test_shortcuts_pin_and_settings_section_are_remembered():
     root, m, inst, app = open_lite()
     try:
-        for n in range(1, 6):
+        for n in range(1, 5):
             assert app.bind_all(f"<Control-Key-{n}>"), n
-        app._go_tab(app._tab_dailies)
-        assert app.nb.index() == app._tab_dailies
+        app._go_tab(1)
+        assert app.nb.index() == 1
         app._cycle_tab(1)
-        assert app.nb.index() == app._tab_dailies + 1
+        assert app.nb.index() == 2
         app._cycle_tab(-1)
-        assert app.nb.index() == app._tab_dailies
+        assert app.nb.index() == 1
         assert bool(app.attributes("-topmost")) is False
         app._toggle_pin()
         assert bool(app.attributes("-topmost")) and app.nb.pin.cget("text") == "Pinned" and app._pin_var.get()
-        app.open_script_settings("raid_tickets")
+        app.nb.select(app._tab_settings)
+        app._set_nav.select("palaces")
         app._save_ui_state()
         ui = json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))
-        assert ui["pinned"] is True and ui["section"] == "raid_tickets"
+        assert ui["pinned"] is True and ui["section"] == "palaces"
         app._set_nav.select("discord")                                    # moved away: the saved entry comes back
         app._restore_tab()
-        assert app._set_nav.current == "raid_tickets" and app._rs_title.cget("text").startswith("Raid Tickets")
+        assert app._set_nav.current == "palaces"
         words = " ".join(texts(app._set_pages["app"]))
         assert "Keep this window on top" in words and "Open the data folder" in words
     finally:
+        close(app, root)
+
+
+def test_video_background_plays_behind_the_window_and_follows_it():
+    import time
+    from rerun_lite import background
+    root, m, inst, app = open_lite(backdrop=True)
+    try:
+        t0 = time.time()
+        while not app.backdrop.active and time.time() - t0 < 5:
+            app.update()
+            time.sleep(0.02)
+        bd = app.backdrop
+        assert bd.active and bd.path.name == "spirit_blossom.mp4"                 # the built-in video
+        assert str(app.attributes("-transparentcolor")).lower() == ios.C["bg"].lower()                 # the page colour shows the video
+        t0 = time.time()
+        while bd.player.frame is None and time.time() - t0 < 5:
+            app.update()
+            time.sleep(0.02)
+        assert bd.player.frame is not None and bd.player.frame.shape[2] == 3
+        app.geometry("1100x820+120+90")
+        for _ in range(20):
+            app.update()
+            time.sleep(0.02)
+        w = bd.win
+        assert (w.winfo_width(), w.winfo_height()) == (app.winfo_width(), app.winfo_height())
+        assert (w.winfo_rootx(), w.winfo_rooty()) == (app.winfo_rootx(), app.winfo_rooty())
+        assert bd.player.size == (app.winfo_width(), app.winfo_height())
+        assert "Playing: spirit_blossom.mp4" in app._bg_label.cget("text")
+        # a video dropped into background/ is used instead of the built-in one
+        (root / "background").mkdir()
+        shutil.copy(ROOT / "assets" / "spirit_blossom.mp4", root / "background" / "mine.mp4")
+        assert background.find_video(root).name == "mine.mp4"
+        # settings: off removes the second window and the colour key
+        app._bg_changed(bg_on=False)
+        app.update()
+        assert not bd.active and bd.win is None and app.attributes("-transparentcolor") == ""
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["bg_on"] is False
+        app._bg_changed(bg_on=True, bg_dim="Strong")
+        assert bd.active and bd.player.dim == background.DIMS["Strong"]
+        assert not app.errors, app.errors
+    finally:
+        app.backdrop.stop()
+        close(app, root)
+
+
+def test_the_video_is_only_for_the_ahri_theme_and_a_missing_file_is_harmless():
+    from rerun_lite import background
+    root, m, inst, app = open_lite(backdrop=True)
+    try:
+        app.backdrop.stop()
+        assert background.find_video(root, str(root / "nope.mp4")).name == "spirit_blossom.mp4"       # falls back
+        from rerun_lite import theme
+        theme.ACTIVE = "dark"
+        assert app.backdrop.start() is False                                       # not the Ahri theme: no video, no colour key
+        theme.ACTIVE = "ahri"
+        app.backdrop.s["bg_path"] = str(root / "nope.mp4")
+        assert app.backdrop.start() is True                                        # the built-in video plays instead
+    finally:
+        app.backdrop.stop()
+        close(app, root)
+
+
+def test_extras_start_stop_button_sound_and_remembered_emulator():
+    root, m, inst, app = open_lite()
+    try:
+        started = []
+        m._worker = lambda i: started.append(i.name)
+        assert app.nb.action.cget("text") == "Start"
+        app._toggle_run()                                                     # Ctrl+Enter / the button: start the selected emulator
+        m.instances[inst].thread.join(5)
+        assert started == [inst] and app.nb.index() == app._tab_crest
+        m.instances[inst].status = "running"
+        app._refresh_status()
+        assert app.nb.action.cget("text") == "Stop"
+        stopped = []
+        app.stop_all_clicked = lambda: stopped.append(1)
+        app._stop_run()
+        assert stopped == [1]
+        m.instances[inst].status = "idle"
+        app._refresh_status()
+        assert app.nb.action.cget("text") == "Start"
+        # the emulator you pick is remembered in LITE's own file
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8")).get("emulator") == inst
+        # sound: only when it is on, only for alerts
+        import sys
+        import types
+        beeps = []
+        fake = types.SimpleNamespace(MB_ICONASTERISK=64, MessageBeep=lambda k: beeps.append(k))
+        sys.modules["winsound"] = fake
+        try:
+            app._maybe_sound({"type": "notify"})
+            assert beeps == []
+            app._sound_var.set(True)
+            app._set_sound()
+            n = len(beeps)
+            app._maybe_sound({"type": "status"})
+            app._maybe_sound({"type": "notify"})
+            assert len(beeps) == n + 1
+        finally:
+            del sys.modules["winsound"]
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["sound_alerts"] is True
+        assert not app.errors, app.errors
+    finally:
+        m.instances[inst].status = "idle"
+        close(app, root)
+
+
+def test_clicking_the_video_does_not_raise_it_over_the_app():
+    """The bug: a click where the page background shows the video landed on the video window, which Windows then made
+    active and raised over the app, so every widget vanished. The video window must refuse that activation."""
+    import ctypes
+    import time
+    from ctypes import wintypes
+    root, m, inst, app = open_lite(backdrop=True)
+    try:
+        t0 = time.time()
+        while not app.backdrop.active and time.time() - t0 < 5:
+            app.update()
+            time.sleep(0.02)
+        bd = app.backdrop
+        assert bd.active and bd.hooked >= 2, bd.hooked                        # the video window and the windows inside it
+        u = ctypes.windll.user32
+        u.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        u.SendMessageW.restype = ctypes.c_ssize_t
+        top = u.GetParent(bd.win.winfo_id()) or bd.win.winfo_id()
+        kids = []
+        enum = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        u.EnumChildWindows(top, enum(lambda h, _l: (kids.append(h), True)[1]), 0)
+        WM_MOUSEACTIVATE, MA_NOACTIVATE = 0x21, 3
+        for h in [top, *kids]:                                                # "a mouse button went down on this window"
+            assert u.SendMessageW(h, WM_MOUSEACTIVATE, top, 0x02010001) == MA_NOACTIVATE, hex(h)
+        EX = -20
+        main_top = u.GetParent(app.winfo_id()) or app.winfo_id()
+        assert not u.GetWindowLongW(main_top, EX) & 0x08000000                # the app itself can still be activated
+        assert u.GetWindowLongW(top, EX) & 0x08000080 == 0x08000080          # no activation, no taskbar button
+        # the app window stays directly above the video, also after the video is clicked (events reach Tk)
+        bd.win.event_generate("<ButtonPress-1>", x=40, y=40)
+        bd.win.event_generate("<ButtonRelease-1>", x=40, y=40)
+        for _ in range(10):
+            app.update()
+        order = []
+        h = u.GetTopWindow(None)
+        while h:
+            if h in (main_top, top):
+                order.append("app" if h == main_top else "video")
+            h = u.GetWindow(h, 2)
+        assert order == ["app", "video"], order
+        assert not app.errors, app.errors
+    finally:
+        app.backdrop.stop()
+        close(app, root)
+
+
+def test_ahri_is_its_own_theme_and_dark_and_light_are_the_original_black_and_white():
+    from rerun_lite import theme
+    original_dark, original_light = dict(theme.CLASSIC_DARK), dict(theme.CLASSIC_LIGHT)
+    assert original_dark["bg"] == "#000000" and original_dark["card"] == "#1C1C1E"           # ReRun's own black
+    assert original_light["bg"] == "#F2F2F7" and original_light["card"] == "#FFFFFF"          # ... and white
+    assert theme.apply_palette("dark") == "dark" and ios.DARK == original_dark and not theme.is_ahri()
+    assert theme.apply_palette("light") == "light" and ios.LIGHT == original_light and ios.DARK == original_dark
+    assert theme.apply_palette("auto") == "auto" and ios.DARK == original_dark
+    assert theme.apply_palette("ahri") == "dark" and ios.DARK["bg"] == theme.AHRI["bg"] and theme.is_ahri()
+    assert theme.apply_palette("nonsense") == "dark" and theme.is_ahri()                      # unknown: the default theme
+    assert theme.apply_palette("dark") == "dark" and ios.DARK == original_dark                # and back again, unchanged
+    root, m, inst, app = open_lite()
+    try:
+        assert app._theme == "ahri" and ios.C["blue"] == theme.AHRI["blue"]                   # the default for LITE
+        assert app.appearance["values"] == list(theme.THEMES.values()) and app.appearance.get() == "Ahri"
+        m.save_config()
+        before_config = (root / "config.yaml").read_bytes()
+        asked = []
+        ios.confirm = lambda *a, **k: asked.append(a[1]) or False                             # "Restart now?" -> not now
+        app.appearance.set("Dark")
+        app._set_theme()
+        assert asked and "Dark" in asked[0]
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["theme"] == "dark"
+        assert (root / "config.yaml").read_bytes() == before_config                           # config.yaml untouched
+        assert "Theme saved" in app.shown[-1]
+        assert not app.errors, app.errors
+    finally:
+        theme.apply_palette("ahri")
         close(app, root)
 
 
@@ -628,7 +658,7 @@ def test_selftest_builds_the_whole_window():
     out = Path(tempfile.mkdtemp()) / "r.txt"
     try:
         assert lite_main.selftest(out) == 0, out.read_text(encoding="utf-8")
-        assert out.read_text(encoding="utf-8") == "ok Auto Crest | Dailies | History | Templates | Settings"
+        assert out.read_text(encoding="utf-8") == "ok Auto Crest | History | Templates | Settings"
     finally:
         shutil.rmtree(out.parent, ignore_errors=True)
 
@@ -694,7 +724,7 @@ def test_lite_updates_use_their_own_channel_and_never_the_full_apps():
         assert updates.check(inst, cfg).error == channel.NOT_LITE
         shutil.rmtree(site / "lite")
         # 3. a LITE release: LITE's templates only, LITE's exe, found and downloaded under LITE's own names
-        (src / "templates" / "mail_chest.png").write_bytes(b"a newer mail chest picture")
+        (src / "templates" / "equip_crest_screen.png").write_bytes(b"a newer equip screen picture")
         exe = tmp / "RerunLite.exe"
         exe.write_bytes(b"MZ a newer ReRun LITE")
         publish_update.__version__ = "99.0.0"
@@ -704,7 +734,7 @@ def test_lite_updates_use_their_own_channel_and_never_the_full_apps():
         res = updates.check(inst, cfg)
         assert not res.error and res.app["version"] == "99.0.0", res.error
         # (no baseline in this folder: every picture counts as yours, so content is left alone)
-        assert res.plan is not None and res.plan.install == {} and "templates/mail_chest.png" in res.plan.kept
+        assert res.plan is not None and res.plan.install == {} and "templates/equip_crest_screen.png" in res.plan.kept
         got = updates.download_app(inst, cfg, res.app)
         assert got.name == "RerunLite.update.exe" and got.read_bytes() == exe.read_bytes()
         assert not (inst / "Rerun.update.exe").exists() and not (inst / "content_state.json").exists()
@@ -712,10 +742,10 @@ def test_lite_updates_use_their_own_channel_and_never_the_full_apps():
         base = {rel: updates.sha256_file(p) for rel, p in content.lite_files(inst).items()}
         (inst / "lite_content_baseline.json").write_text(json.dumps({"files": base}), encoding="utf-8")
         res = updates.check(inst, cfg)
-        assert list(res.plan.install) == ["templates/mail_chest.png"], res.plan.install
+        assert list(res.plan.install) == ["templates/equip_crest_screen.png"], res.plan.install
         updates.stage_content(inst, cfg, res.plan)
         assert "1 file(s) updated" in updates.commit_staged(inst)
-        assert (inst / "templates" / "mail_chest.png").read_bytes() == b"a newer mail chest picture"
+        assert (inst / "templates" / "equip_crest_screen.png").read_bytes() == b"a newer equip screen picture"
         assert (inst / "data" / "lite" / "content_state.json").exists() and not (inst / "content_state.json").exists()
         assert not (inst / ".update_staging").exists()
         # 5. sharing a folder with the full ReRun: LITE leaves templates/ to it
@@ -748,23 +778,6 @@ def test_update_result_with_nothing_published_is_shown_as_a_fact():
     finally:
         ios.alert = real_alert
         close(app, root)
-
-
-def test_first_run_import_also_brings_the_checklist_over():
-    old, new = lite_root(), lite_root()
-    try:
-        m, _ = manager(old)                                   # a ReRun folder with an account and a task of its own
-        aid = m.ops.store.active_id
-        m.ops.checklist.add_task(aid, "Guild check-in")
-        assert bring_accounts(new) == 0                       # nothing was imported: nothing to bring
-        (new / "migrated_from.json").write_text(json.dumps({"from": str(old)}), encoding="utf-8")
-        assert bring_accounts(new) > 0
-        m2, _ = manager(new)
-        assert any(d["name"] == "Guild check-in" for d in m2.ops.checklist.definitions(m2.ops.store.active_id))
-        assert bring_accounts(new) == 0                       # never over accounts this copy already has
-    finally:
-        shutil.rmtree(old, ignore_errors=True)
-        shutil.rmtree(new, ignore_errors=True)
 
 
 if __name__ == "__main__":

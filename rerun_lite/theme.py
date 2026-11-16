@@ -10,32 +10,66 @@ import tkinter as tk
 from rerun import ios
 from rerun.ios import C, F, px
 
-GOLD = "#E3B15C"          # the "LITE" mark
-GOLD_TEXT = "#1B1405"
+from . import palettes
 
-# Deep blue-black surfaces, one indigo accent, soft semantic colours. Same keys as ios.LIGHT / ios.DARK.
-DARK = {
-    "bg": "#0B0E14", "card": "#131824", "sep": "#232B3C", "label": "#F2F4F8",
-    "secondary": "#8E97AA", "tertiary": "#4A5267", "blue": "#7381FF", "green": "#34D399",
-    "red": "#F87171", "orange": "#FBBF24", "gray": "#8E97AA", "fill": "#1F2638",
-    "field": "#1A2030", "bar": "#0E121B", "tab_off": "#7A8499", "viewer": "#070A0F",
-    "alert": "#1A2030", "menu": "#1A2030",
-}
-LIGHT = {
-    "bg": "#F4F5F9", "card": "#FFFFFF", "sep": "#E3E6EE", "label": "#12151C",
-    "secondary": "#6B7385", "tertiary": "#B4BACA", "blue": "#4A5BE0", "green": "#16A34A",
-    "red": "#DC2626", "orange": "#D97706", "gray": "#8A93A6", "fill": "#E8EAF1",
-    "field": "#EEF0F6", "bar": "#FFFFFF", "tab_off": "#7A8499", "viewer": "#E4E7EF",
-    "alert": "#FFFFFF", "menu": "#FFFFFF",
-}
+# ---- the themes. "Dark" and "Light" are ReRun's own black and white iOS palettes, exactly as they were. Every other
+# theme is a LITE theme of its own, described as data in palettes.py (palette, "LITE" tag colours, background video).
+CLASSIC_DARK = dict(ios.DARK)
+CLASSIC_LIGHT = dict(ios.LIGHT)
+THEMES = palettes.labels()                      # key -> name, in the order the Theme setting lists them
+DEFAULT_THEME = palettes.DEFAULT
+ACTIVE = DEFAULT_THEME
+AHRI = palettes.LOOKS["ahri"].palette           # (kept: the default theme's palette)
+CLASSIC_MARK, CLASSIC_MARK_TEXT = "#E3B15C", "#1B1405"    # the "LITE" tag in Dark and Light: gold
+
+
+def saved_theme(root) -> str:
+    """The theme chosen in Settings > General, kept in data/lite/ui.json (Ahri when nothing is saved)."""
+    import json
+    from pathlib import Path
+    try:
+        key = json.loads((Path(root) / "data" / "lite" / "ui.json").read_text(encoding="utf-8")).get("theme")
+    except (OSError, ValueError, AttributeError):
+        key = None
+    return key if key in THEMES else DEFAULT_THEME
+
+
+def current() -> palettes.Look | None:
+    """The open LITE theme, or None for ReRun's own Dark / Light / Automatic."""
+    return palettes.LOOKS.get(ACTIVE)
+
+
+def is_custom() -> bool:
+    """A LITE theme (outlined cards, a video background); False for Dark, Light and Automatic."""
+    return ACTIVE in palettes.LOOKS
+
+
+def is_ahri() -> bool:
+    return ACTIVE == "ahri"
+
+
+def mark_colors() -> tuple[str, str]:
+    look = current()
+    return look.mark if look else (CLASSIC_MARK, CLASSIC_MARK_TEXT)
+
+
+def apply_palette(theme: str = DEFAULT_THEME) -> str:
+    """Before ios.init: put the chosen palette in the kit's tables and return what to hand ios.init
+    ("dark", "light" or "auto"). Dark and Light are always put back exactly as ReRun has them."""
+    global ACTIVE
+    ACTIVE = theme if theme in THEMES else DEFAULT_THEME
+    ios.DARK.clear()
+    ios.DARK.update(CLASSIC_DARK)
+    ios.LIGHT.clear()
+    ios.LIGHT.update(CLASSIC_LIGHT)
+    look = current()
+    if look is None:
+        return ACTIVE
+    (ios.DARK if look.dark else ios.LIGHT).update(look.palette)
+    return "dark" if look.dark else "light"
+
 
 _applied = False
-
-
-def apply_palette() -> None:
-    """Before ios.init: the kit builds its colours from these two tables."""
-    ios.DARK.update(DARK)
-    ios.LIGHT.update(LIGHT)
 
 
 def apply_look() -> None:
@@ -46,13 +80,45 @@ def apply_look() -> None:
         return
     _applied = True
 
+    original_corners = ios._corners
+
+    def corners(r: int, fill: str, bg: str):
+        """The kit shrinks its rounded-corner pictures with a Lanczos filter, which overshoots at a sharp edge and leaves
+        a ring of pixels a shade darker than the page colour. On a normal page nobody sees it; on a colour-keyed video
+        window every such pixel is opaque, so it shows as a dark dot at each corner. Averaging (BOX) does not overshoot:
+        the pixels outside the corner stay exactly the page colour, which is transparent."""
+        if not is_custom():
+            return original_corners(r, fill, bg)
+        key = ("corner-box", r, fill, bg)
+        if key not in ios._cache:
+            from PIL import Image, ImageDraw, ImageTk
+            ss = 4
+            big = Image.new("RGB", (r * 2 * ss, r * 2 * ss), bg)
+            ImageDraw.Draw(big).ellipse((0, 0, r * 2 * ss - 1, r * 2 * ss - 1), fill=fill)
+            im = big.resize((r * 2, r * 2), Image.BOX)
+            ios._cache[key] = [ImageTk.PhotoImage(im.crop(b)) for b in
+                               ((0, 0, r, r), (r, 0, 2 * r, r), (0, r, r, 2 * r), (r, r, 2 * r, 2 * r))]
+        return ios._cache[key]
+
+    ios._corners = corners
+    original_layout = ios.Card._layout
+
     def layout(self, e):
+        if not is_custom():                                # Dark and Light keep ReRun's own flat cards
+            return original_layout(self, e)
         self._cv.delete("all")
         border = C["sep"]
         ios.rounded_rect(self._cv, 0, 0, e.width, e.height, self._r, border, self._bg)
         ios.rounded_rect(self._cv, 1, 1, e.width - 1, e.height - 1, max(self._r - 1, 2), self.color, border)
 
     ios.Card._layout = layout
+
+    # LITE lists a single script, and the original pages ask a Select for its second entry (current(1)): clamp.
+    def current(self, i: int):
+        if self._values:
+            self.var.set(self._values[max(0, min(i, len(self._values) - 1))])
+
+    ios.Select.current = current
 
     # The tab bar already names the page, so the page title is smaller and leaves the room to the content.
     def page_header(parent, title: str) -> tk.Frame:
@@ -86,7 +152,8 @@ class LiteTabs(ios.TabView):
         mark = tk.Frame(row, bg=bar)
         mark.pack(side="left", pady=px(8))
         tk.Label(mark, text="ReRun", bg=bar, fg=C["label"], font=F["title"]).pack(side="left")
-        tk.Label(mark, text="LITE", bg=GOLD, fg=GOLD_TEXT, font=F["caption"][:2] + ("bold",),
+        tag_bg, tag_fg = mark_colors()
+        tk.Label(mark, text="LITE", bg=tag_bg, fg=tag_fg, font=F["caption"][:2] + ("bold",),
                  padx=px(6), pady=px(1)).pack(side="left", padx=(px(8), 0))
         if version:
             tk.Label(mark, text=version, bg=bar, fg=C["secondary"], font=F["footnote"]).pack(side="left", padx=(px(8), 0))
@@ -100,6 +167,9 @@ class LiteTabs(ios.TabView):
         self.chip = tk.Label(right, text="", bg=bar, fg=C["secondary"], font=F["footnote_semi"], cursor="hand2",
                              padx=px(10), pady=px(3))
         self.chip.pack(side="right")
+        self.action = tk.Label(right, text="", bg=C["blue"], fg="#FFFFFF", font=F["footnote_semi"], cursor="hand2",
+                               padx=px(14), pady=px(4))
+        self.action.pack(side="right", padx=(0, px(10)))
         self._badges: list[tk.Label] = []
         tk.Frame(self, height=1, bg=C["sep"]).pack(fill="x")
         foot = tk.Frame(self, bg=bar)
@@ -149,7 +219,7 @@ class LiteTabs(ios.TabView):
         if not text:
             b.pack_forget()
             return
-        b.configure(text=text, bg=C[kind], fg=GOLD_TEXT if kind in ("orange", "green") else "#FFFFFF")
+        b.configure(text=text, bg=C[kind], fg=mark_colors()[1] if kind in ("orange", "green") else "#FFFFFF")
         if not b.winfo_manager():
             b.pack(side="left", padx=(px(7), 0))
 
@@ -157,6 +227,10 @@ class LiteTabs(ios.TabView):
         """The live status at the right of the top bar: a coloured dot and a short sentence."""
         c = C[kind]
         self.chip.configure(text=("●  " if dot else "") + text, fg=c, bg=ios.mix(C["bar"], c, 0.16))
+
+    def set_action(self, text: str, kind: str = "blue") -> None:
+        """The one-click Start / Stop button at the right of the top bar."""
+        self.action.configure(text=text, bg=C[kind])
 
     def set_pin(self, on: bool) -> None:
         self.pin.configure(text=("Pinned" if on else "Pin"), fg=C["blue"] if on else C["tab_off"],
@@ -198,7 +272,7 @@ class GroupedNav(ios.SideNav):
 
 
 class Tip:
-    """A small hover label (e.g. "Dailies  Ctrl+2"). Appears after half a second, goes away on leave or click."""
+    """A small hover label (e.g. "History  Ctrl+2"). Appears after half a second, goes away on leave or click."""
 
     def __init__(self, widget: tk.Widget, text):
         self.w, self.text, self.tw, self._job = widget, text, None, None

@@ -13,7 +13,7 @@ never changes what LITE is offered. The manifest is marked "product": "lite"; LI
 It holds only the templates LITE's scripts use (rerun_lite/content.py).
 
 Same signing key and the same publish function as the full app. The version offered for --exe is
-rerun/__init__.py's __version__ (LITE x.y.z is built from ReRun x.y.z): build RerunLite.exe from the same
+rerun_lite/__init__.py's __version__ (LITE has its own version number, 1.0.0 to start): build RerunLite.exe from the same
 source you publish.
 """
 from __future__ import annotations
@@ -30,7 +30,10 @@ sys.path.insert(0, str(ROOT))
 from rerun.updates import CHANNELS, parse_manifest, sign_manifest  # noqa: E402
 from rerun_lite import content  # noqa: E402
 from rerun_lite.channel import LITE_PATH, PRODUCT  # noqa: E402
+from rerun_lite import __version__ as LITE_VERSION  # noqa: E402
 from tools import publish_update  # noqa: E402
+
+publish_update.__version__ = LITE_VERSION      # the app version a LITE update offers is LITE's own
 
 
 def publish(out: Path, channel: str, secret: bytes, exe: Path | None = None, notes: str = "",

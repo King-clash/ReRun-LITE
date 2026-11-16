@@ -6,7 +6,7 @@ differences are which scripts exist and what "this emulator's script" means:
 
   * scripts_available() lists Crest, Login & Mail and Raid Tickets and nothing else (no other built-in
     script, no custom routine), so nothing else can be started from the window, a schedule or Discord;
-  * an emulator's own script is always Crest. A Dailies task runs its script once and the emulator is a
+  * an emulator's own script is always Crest. (If a start ever names another script, the emulator is a
     Crest emulator again afterwards;
   * LITE never writes an emulator's script into config.yaml. A full ReRun sharing the same folder keeps
     whatever script it had chosen there.
@@ -16,10 +16,15 @@ from __future__ import annotations
 from rerun.manager import Instance, Manager
 from rerun.scripts import SCRIPTS
 
-from . import LITE_SCRIPTS, MAIN_SCRIPT
+from . import LITE_SCRIPTS, MAIN_SCRIPT, crest
 
 
 class LiteManager(Manager):
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        crest.install()                         # 'crest' is Crest plus the daily palace selector (rerun_lite/crest.py)
+        crest.LiteCrest.PALACE_ROOT = self.root
 
     def scripts_available(self) -> dict[str, str]:
         """id -> display name of the scripts LITE has (Crest first)."""
@@ -50,4 +55,4 @@ class LiteManager(Manager):
         try:
             super()._worker(inst)
         finally:
-            inst.script = MAIN_SCRIPT           # after a Dailies task the emulator is a Crest emulator again
+            inst.script = MAIN_SCRIPT           # afterwards the emulator is a Crest emulator again

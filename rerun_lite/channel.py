@@ -23,6 +23,8 @@ from pathlib import Path
 
 from rerun import updates
 
+from . import __version__ as LITE_VERSION
+
 PRODUCT = "lite"
 LITE_PATH = "lite"
 DATA_DIR = "data/lite"                       # LITE's own small files (data/ is already git-ignored)
@@ -53,7 +55,7 @@ def apply(root: str | Path) -> None:
         return
     root = Path(root)
     data_dir(root)
-    for name in ("STATE_FILE", "BASELINE_FILE", "STAGING_DIR", "APP_NEW", "APP_OLD", "settings", "check"):
+    for name in ("__version__", "STATE_FILE", "BASELINE_FILE", "STAGING_DIR", "APP_NEW", "APP_OLD", "settings", "check"):
         _original[name] = getattr(updates, name)
     main_settings, main_check = updates.settings, updates.check
 
@@ -71,6 +73,7 @@ def apply(root: str | Path) -> None:
             return updates.CheckResult(error=NOT_LITE)
         return res
 
+    updates.__version__ = LITE_VERSION                        # LITE's own number (1.0.0), not the engine copy's
     updates.STATE_FILE = f"{DATA_DIR}/content_state.json"
     updates.BASELINE_FILE = "lite_content_baseline.json"    # written next to the exe by build_lite.py
     updates.STAGING_DIR = f"{DATA_DIR}/update_staging"

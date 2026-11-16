@@ -8,20 +8,22 @@ import tkinter as tk
 from rerun import errlog, ios
 from rerun.ios import px
 
-from . import MAIN_SCRIPT, readiness
+from . import MAIN_SCRIPT, palaces, readiness
 from .theme import Notice, Tip
 
 SHORTCUTS = (
-    ("Ctrl+1 ... Ctrl+5", "Auto Crest, Dailies, History, Templates, Settings"),
+    ("Ctrl+1 ... Ctrl+4", "Auto Crest, History, Templates, Settings"),
     ("Ctrl+Tab / Ctrl+Shift+Tab", "Next / previous tab"),
     ("Ctrl+,", "Settings"),
+    ("Ctrl+Enter", "Start Crest on the selected emulator (or stop, when it is running)"),
+    ("Ctrl+.", "Stop everything"),
     ("Ctrl+T", "Keep the window on top (Pin)"),
     ("F1", "This list"),
     ("F11", "Pause or resume everything (works in the game too)"),
     ("F12", "Stop everything (works in the game too)"),
 )
-TAB_NAMES = ("Auto Crest", "Dailies", "History", "Templates", "Settings")
-FIX_BUTTON = {"emulator": "Show", "templates": "Open Templates", "settings": "Crest Settings"}
+TAB_NAMES = ("Auto Crest", "History", "Templates", "Settings")
+FIX_BUTTON = {"emulator": "Show", "templates": "Open Templates", "settings": "Crest Settings", "palaces": "Palace Selector"}
 
 
 class StatusMixin:
@@ -37,7 +39,7 @@ class StatusMixin:
         nb.pin.bind("<Button-1>", lambda e: self._toggle_pin())
         Tip(nb.pin, "Keep this window above other windows   Ctrl+T")
         self._chip_tip = "Click to open Auto Crest"
-        for n in range(1, 6):
+        for n in range(1, 5):
             self.bind_all(f"<Control-Key-{n}>", lambda e, n=n: self._go_tab(n - 1))
         self.bind_all("<Control-comma>", lambda e: self._go_tab(self._tab_settings))
         self.bind_all("<Control-Tab>", lambda e: self._cycle_tab(1))
@@ -88,10 +90,19 @@ class StatusMixin:
         g.pack(fill="x", pady=(0, px(24)), after=w)
         ios.Switch(g.row("Keep this window on top", "Same as the Pin button at the top right (Ctrl+T)."),
                    self._pin_var, command=lambda: self._apply_pin(bool(self._pin_var.get()))).pack()
+        ios.Switch(g.row("Sound on alerts", "A short beep when Crest sends an alert (a crest kept, a problem)."),
+                   self._sound_var, command=self._set_sound).pack()
         ios.Button(g.row("Open the data folder", "Where settings, history and crest pictures are kept."),
                    "Open", self._open_data_folder, kind="tinted", small=True).pack()
+        ios.Button(g.row("Open the palace list", "palaces.yaml, next to ReRun LITE (the images folder is beside it)."),
+                   "Open", self._open_palace_file, kind="tinted", small=True).pack()
         ios.Button(g.row("Keyboard shortcuts", "Switch tabs, pin the window and more."),
                    "Show", self.show_shortcuts, kind="tinted", small=True).pack()
+        self._extend_background(g, w.master)
+
+    def _open_palace_file(self):
+        f = self.m.root / palaces.LIST_FILE
+        self._open_path(f if f.exists() else self.m.root)
 
     def _open_data_folder(self):
         try:
@@ -111,21 +122,24 @@ class StatusMixin:
             self.nb.select(self._tab_templates)
         elif where == "settings":
             self.open_script_settings(MAIN_SCRIPT)
+        elif where == "palaces":
+            self.nb.select(self._tab_settings)
+            self._set_nav.select("palaces")
         else:
             self.nb.select(self._tab_crest)
 
     def _refresh_status(self):
         """The chip, badges, notice and window title. Cheap enough to run every second; the file checks inside it
         (templates, settings) only every fifth time."""
+        self._refresh_extras()
         n = getattr(self, "_status_n", 0)
         self._status_n = n + 1
         if n % 5 == 0 or self._status_sig is None:
             try:
                 self._problems = readiness.crest_problems(self.m, self.selected())
-                self._left = readiness.dailies_left(self.ops)
             except Exception as e:  # noqa: BLE001 - a status line must never break the window
                 errlog.note("lite.readiness", e)
-                self._problems, self._left = [], None
+                self._problems = []
         run, paused = readiness.running(self.m)
         errored = [k for k, i in self.m.instances.items() if i.status == "error"]
         if run:
@@ -139,8 +153,7 @@ class StatusMixin:
             chip = ("Needs setup", "orange")
         else:
             chip = ("Ready", "gray")
-        left = self._left
-        sig = (chip, bool(run), bool(paused), tuple(self._problems), left)
+        sig = (chip, bool(run), bool(paused), tuple(self._problems))
         if sig == self._status_sig:
             return
         self._status_sig = sig
@@ -150,10 +163,8 @@ class StatusMixin:
         fixes = {p.fix for p in self._problems}
         self.nb.set_badge(self._tab_crest, "●" if run else ("II" if paused else ("!" if self._problems else None)),
                           "green" if run else "orange")
-        self.nb.set_badge(self._tab_dailies, None if left is None else (str(left) if left else "✓"),
-                          "blue" if left else "green")
         self.nb.set_badge(self._tab_templates, "!" if "templates" in fixes else None, "orange")
-        self.nb.set_badge(self._tab_settings, "!" if "settings" in fixes else None, "orange")
+        self.nb.set_badge(self._tab_settings, "!" if fixes & {"settings", "palaces"} else None, "orange")
         if self._problems:
             p = self._problems[0]
             self._ready_notice.show(p.text, FIX_BUTTON[p.fix], lambda: self._fix(p.fix))
@@ -171,6 +182,7 @@ class StatusMixin:
         """The Auto Crest "needs setup" strip, created hidden (packed by _refresh_status when there is something to fix)."""
         self._tos_banner = after
         self._ready_notice = Notice(page, "orange")
+        self._make_today_line(page, after)
 
 
 __all__ = ["StatusMixin"]

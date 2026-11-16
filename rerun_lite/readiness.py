@@ -7,14 +7,14 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from . import MAIN_SCRIPT
+from . import MAIN_SCRIPT, palaces
 
 DAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 
 class Problem(NamedTuple):
     text: str
-    fix: str          # "emulator" | "templates" | "settings": where the Fix button goes
+    fix: str          # "emulator" | "templates" | "settings" | "palaces": where the Fix button goes
 
 
 def crest_problems(m, instance: str | None) -> list[Problem]:
@@ -28,6 +28,11 @@ def crest_problems(m, instance: str | None) -> list[Problem]:
         out.append(Problem(f"{len(missing)} Crest template picture(s) missing: {shown}.", "templates"))
     inst = instance if instance in m.instances else next(iter(m.instances))
     cfg = m.script_settings(inst, MAIN_SCRIPT)
+    choice = palaces.choose(m.root)
+    if choice.mode != "off":                      # the daily palace selector decides the palace
+        if not choice.ok:
+            out.append(Problem(f"Palace selector: {choice.problem}", "palaces"))
+        return out
     if cfg.get("start_home", True):
         tiles = {n for n, _, _, have in m.template_checklist(MAIN_SCRIPT)
                  if have and (n == "crest_palace_target" or n.rsplit("_", 1)[-1] in DAYS)
@@ -36,14 +41,6 @@ def crest_problems(m, instance: str | None) -> list[Problem]:
             out.append(Problem("Crest does not know which palace to open. Capture the palace tile in Templates "
                                "or type the palace name in Crest settings.", "settings"))
     return out
-
-
-def dailies_left(ops) -> int | None:
-    """Daily tasks not yet completed for the active account (None when there is no account)."""
-    aid = ops.store.active_id
-    if not aid:
-        return None
-    return len(ops.checklist.summary(aid)["daily"]["remaining"])
 
 
 def running(m) -> tuple[list[str], list[str]]:

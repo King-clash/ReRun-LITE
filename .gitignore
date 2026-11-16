@@ -40,3 +40,17 @@ tests/fixtures/*
 Thumbs.db
 desktop.ini
 BUILDS.md
+
+!tests/fixtures/crest_palace_list.png
+
+# The palace selector data: the list and the pictures are yours (game art), not part of the program
+palaces.yaml
+images/
+
+# Your own background videos
+background/*
+!background/README.txt
+
+# Generated how-to videos (old look; regenerate with tools/make_videos.py) and release output
+docs/videos/
+release/

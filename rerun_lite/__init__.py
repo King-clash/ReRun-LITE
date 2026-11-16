@@ -1,30 +1,27 @@
-"""ReRun LITE - a separate, smaller app with exactly two features: Auto Crest and Dailies.
+"""ReRun LITE - a separate, smaller app for Auto Crest.
 
-LITE is not a copy of ReRun and does not change it. It is a thin shell around the SAME code the full
-app runs (the `rerun` package):
+LITE is its own project (version 1.0.0, its own releases and update address). It is a thin shell around the Crest
+code and window kit of the `rerun` package that is copied into this repository:
 
-  * Auto Crest  = rerun/scripts/crest.py (CrestScript), on the original Dashboard page;
-  * Dailies     = rerun/checklist.py (the daily & weekly checklist), with the scripts it can start:
-                  Login & Mail (rerun/scripts/login_mail.py) and Raid Tickets (rerun/scripts/raids.py, Beta).
+  * Auto Crest  = rerun/scripts/crest.py (CrestScript) on the original Dashboard page, plus the daily Crest
+                  Palace selector (rerun_lite/crest.py, palaces.py);
+  * History, Templates, Discord alerts, Log and the app settings are the original pages.
 
-Nothing in this package re-implements either feature: `rerun_lite.manager.LiteManager` is the original
-Manager with the list of scripts cut down to those three, and `rerun_lite.app.LiteApp` is the original
-window class building only the pages those two features need. No file of the original app is edited.
+`rerun_lite.manager.LiteManager` is the original Manager with the script list cut down to Crest, and
+`rerun_lite.app.LiteApp` is the original window class building only the pages Crest needs.
 
 Start it with:  py lite_main.py        Build it with:  py build_lite.py
 """
 from __future__ import annotations
 
-from rerun import __version__  # noqa: F401 - LITE x.y.z is built from ReRun x.y.z (same Crest, same checklist)
 
+__version__ = "1.0.0"          # LITE has its own version number; it does not follow ReRun's
 APP_NAME = "ReRun LITE"
 EXE_NAME = "RerunLite"          # RerunLite.exe - never Rerun.exe, so the two can sit side by side
 
 # The one script an emulator runs in LITE: Start, Start All, schedules and autostart all mean this.
 MAIN_SCRIPT = "crest"
-# Everything LITE can start. The last two belong to Dailies: they are the scripts behind the checklist's
-# "Login reward + mail" and "Raid tickets" tasks, started from the Dailies tab only.
-LITE_SCRIPTS = ("crest", "login_mail", "raid_tickets")
-DAILIES_SCRIPTS = ("login_mail", "raid_tickets")
+# Everything LITE can start.
+LITE_SCRIPTS = ("crest",)
 
-__all__ = ["APP_NAME", "EXE_NAME", "MAIN_SCRIPT", "LITE_SCRIPTS", "DAILIES_SCRIPTS", "__version__"]
+__all__ = ["APP_NAME", "EXE_NAME", "MAIN_SCRIPT", "LITE_SCRIPTS", "__version__"]
