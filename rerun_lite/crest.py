@@ -17,6 +17,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from rerun import textnav
 from rerun.scripts import SCRIPTS, CrestScript
 from rerun.scripts.base import Finished
 
@@ -73,6 +74,26 @@ class LiteCrest(CrestScript):
         msg = f"Crest: the palace selector can't run today ({choice.day}): {choice.problem} Stopped - no other palace was run."
         self.notify(msg, screenshot=False)
         raise Finished("palace selector: " + choice.problem)
+
+    def handle_quest_list(self, screen):
+        """A palace has several quests (Subject in Trance [PRO], [ADV], [INT]...). The original needs a picture of one quest
+        row, which only fits one palace, or a quest name. With neither, and more than one quest on the list, it stopped
+        with "quest row not recognised". LITE runs the daily palace selector, so a different palace comes up each day:
+        when no picture and no name applies, take the TOP quest (the hardest, listed first). A name in 'Quest to farm'
+        or a captured row picture still wins."""
+        qn = str(self.cfg.get("quest_name") or "").strip()
+        if not qn and not any(self.has_template(n) and self.find(n, screen) for n in self.QUEST_ROW_NAMES):
+            words = self.ocr.screen_words(screen, min_conf=40) if self.ocr is not None else []
+            rows = textnav.quest_rows(words) if words else []
+            if len(rows) >= 2:
+                if self.target_reached():
+                    self.finish()
+                self.quest_row_misses = 0
+                self.log(f"Quest list - opening the top quest ('{rows[0]['title']}'); set 'Quest to farm' in the Crest settings to pick another")
+                self.tap(300, rows[0]["y"], settle=2)
+                self.reset_party("new quest entry")
+                return
+        return super().handle_quest_list(screen)
 
     def handle_crest_palace_screen(self, screen):
         if not self.navigating() or not self.selector_on():

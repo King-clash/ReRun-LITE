@@ -208,6 +208,46 @@ def test_the_settings_page_lists_palaces_saves_choices_and_feeds_the_status_chip
         close(app, root)
 
 
+def test_quest_list_takes_the_top_quest_when_no_picture_or_name_applies():
+    from types import SimpleNamespace
+
+    from rerun import textnav
+    from rerun_lite.crest import LiteCrest
+    from rerun.scripts import crest as engine
+
+    def make(cfg, found=False, rows=2):
+        class Fake(LiteCrest):
+            ocr = SimpleNamespace(screen_words=lambda *a, **k: ["w"])
+        c = Fake.__new__(Fake)
+        c.cfg, c.taps, c.logs, c.parties = cfg, [], [], []
+        c.has_template, c.find = (lambda n: found), (lambda n, s=None: found)
+        c.target_reached, c.tap = (lambda: False), (lambda x, y, settle=0: c.taps.append((x, y)))
+        c.log, c.reset_party = c.logs.append, c.parties.append
+        textnav.quest_rows = lambda words, y_min=560: [{"y": 663, "title": "The Subject in Trance [PRO]"}, {"y": 850, "title": "[ADV]"}][:rows]
+        return c
+
+    real_rows, real_super = textnav.quest_rows, engine.CrestScript.handle_quest_list
+    called = []
+    engine.CrestScript.handle_quest_list = lambda self, screen: called.append(1)
+    try:
+        c = make({})                                   # nothing set: the top quest (the first row) is opened
+        c.handle_quest_list(None)
+        assert c.taps == [(300, 663)] and c.parties == ["new quest entry"] and not called and "top quest" in c.logs[0]
+        c = make({"quest_name": "ADV"})                # a name set: the original decides
+        c.handle_quest_list(None)
+        assert not c.taps and called == [1]
+        called.clear()
+        c = make({}, found=True)                       # a captured row picture matches: the original decides
+        c.handle_quest_list(None)
+        assert not c.taps and called == [1]
+        called.clear()
+        c = make({}, rows=1)                           # a single quest: the original handles it
+        c.handle_quest_list(None)
+        assert not c.taps and called == [1]
+    finally:
+        textnav.quest_rows, engine.CrestScript.handle_quest_list = real_rows, real_super
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_") and callable(v)]
     failed = 0
