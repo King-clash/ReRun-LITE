@@ -40,11 +40,9 @@ class ShortcutsPageMixin:
                 btn.pack(side="left")
                 btn.action_id = a.id
         g = ios.Group(self._sc_wrap, header="System-wide",
-                      footer="These work even when the game has focus. They are set in config.yaml (hotkeys:).")
+                      footer="These work even when the game has focus. Stop and Pause are also in config.yaml (hotkeys:).")
         g.pack(fill="x", pady=(px(12), px(24)))
-        for line in sc.GLOBAL_HOTKEYS:
-            key, text = line.split(" ", 1)
-            tk.Label(g.row(text), text=key, bg=C["card"], fg=C["secondary"], font=F["body"]).pack()
+        self._global_hotkey_rows(g)
 
     # ------------------------------------------------------------ capturing a key
     def _sc_capture(self, action: str):

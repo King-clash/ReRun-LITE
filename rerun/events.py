@@ -14,12 +14,20 @@ class LogEvent(TypedDict):
     message: str
     line: str          # "HH:MM:SS [instance] message"
     level: str         # info | warn | error
+    category: str      # Information | Automation | Warning | Error | Recovery | System (ReRun LITE adds it)
 
 
 class StatusEvent(TypedDict):
     type: str          # "status"
     instance: str
     status: str        # idle | starting | running | paused | error
+    detail: str
+
+
+class PhaseEvent(TypedDict):
+    type: str          # "phase" (ReRun LITE): the richer run phase changed; `status` events are unchanged
+    instance: str
+    phase: str         # idle | initializing | running | waiting | recovering | paused | completed | stopped | failed
     detail: str
 
 
@@ -34,12 +42,13 @@ class HistoryEvent(TypedDict):
     entry: dict[str, Any]   # the History entry (t, instance, script, kind, detail, ...)
 
 
-Event = Union[LogEvent, StatusEvent, NotifyEvent, HistoryEvent]
+Event = Union[LogEvent, StatusEvent, PhaseEvent, NotifyEvent, HistoryEvent]
 
 # event type -> the keys it must carry (used by tests so a listener can rely on them)
 REQUIRED_KEYS: dict[str, set[str]] = {
     "log": {"type", "instance", "message", "line", "level"},
     "status": {"type", "instance", "status", "detail"},
+    "phase": {"type", "instance", "phase", "detail"},
     "notify": {"type", "instance", "message"},
     "history": {"type", "entry"},
 }

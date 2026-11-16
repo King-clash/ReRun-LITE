@@ -37,6 +37,7 @@ ACTIONS = (
     Action("stop", "Stop everything", "Ctrl+.", "Run"),
     Action("dry_run", "Dry run", "Ctrl+D", "Run"),
     Action("pin", "Keep window on top", "Ctrl+T", "Window"),
+    Action("compact", "Compact mode", "Ctrl+M", "Window"),
     Action("copy_status", "Copy a status summary", "Ctrl+Shift+C", "Window"),
     Action("help", "Show the shortcuts", "F1", "Window"),
 )

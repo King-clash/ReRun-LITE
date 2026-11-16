@@ -173,6 +173,15 @@ class BaseScript:
     MAX_REPEAT = 25  # same state handled this many times in a row = stuck
     WAITING_STATES = {"unknown", "drop_info", "equip_crest_screen", "mail_close_button"}
 
+    @property
+    def last_progress(self) -> float:
+        return self._last_progress
+
+    @last_progress.setter
+    def last_progress(self, value: float) -> None:
+        self._last_progress = value
+        self.ctx.params["last_progress"] = value        # read by the window's stuck watch (rerun_lite/stuck.py)
+
     def __init__(self, ctx: Context, settings: dict | None = None):
         self.ctx = ctx
         self.cfg = {s.key: s.default for s in self.SETTINGS}
@@ -463,6 +472,7 @@ class BaseScript:
                 self.sleep(self.TICK)
                 continue
             self.prev_state, self.state = self.state, state
+            self.ctx.params["script_state"] = state       # for the window's run phase (rerun_lite/phases.py)
             handler = getattr(self, f"handle_{state}", None)
             if handler is None:
                 handler = self._tap_handler if state in self.TAPS else self.handle_unknown
@@ -608,12 +618,16 @@ class BaseScript:
 
     def restart_game(self, scheduled: bool = False) -> None:
         self.note_restart(scheduled)
-        dev = self.ctx.device
-        dev.stop_game()
-        self.sleep(3)
-        dev.launch_game()
-        self.progress()
-        self.on_relaunch()
+        self.ctx.params["recovering"] = "logging back in" if scheduled else "restarting the game"
+        try:
+            dev = self.ctx.device
+            dev.stop_game()
+            self.sleep(3)
+            dev.launch_game()
+            self.progress()
+            self.on_relaunch()
+        finally:
+            self.ctx.params.pop("recovering", None)
 
     def recover_crash(self) -> None:
         if not self.cfg.get("mode_247", False):
@@ -624,10 +638,14 @@ class BaseScript:
         self.note_restart()
         self.log("Game is not running - relaunching")
         self.ctx.stats.incr(self.ctx.instance, "game_restarts")
-        self.ctx.device.launch_game()
-        self.sleep(10)
-        self.progress()
-        self.on_relaunch()
+        self.ctx.params["recovering"] = "relaunching the game"
+        try:
+            self.ctx.device.launch_game()
+            self.sleep(10)
+            self.progress()
+            self.on_relaunch()
+        finally:
+            self.ctx.params.pop("recovering", None)
 
     def on_relaunch(self) -> None:
         """After a relaunch the game is on its title screen; the script's

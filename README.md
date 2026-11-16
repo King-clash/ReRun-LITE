@@ -94,6 +94,41 @@ Settings > **Appearance** changes everything at once, with no restart. The choic
 - **Settings > General > Window & files:** the on-top switch, sound, open the data folder, open the palace list and
   the shortcut list.
 
+## Run tracking, activity and health
+
+These only watch and report; none of them taps the emulator or changes how Crest plays.
+
+- **Run states.** The Instances list and the status chip say what Crest is doing: *Idle, Initializing, Running, Waiting for
+  the game, Recovering, Paused, Completed, Stopped, Failed*. The five old status words still exist underneath.
+- **Sessions** (Settings > Sessions). Each session's counted runs, time per run, runs per hour, failures and game restarts
+  are saved when it ends (`data/lite/sessions.jsonl`, the newest 200, summaries only). A run is counted only when the
+  script counts it; a run still under way when a session ends is not counted as a success. Totals, two graphs (runs per
+  day, time per run), Export CSV and Clear history. Dry runs are not saved.
+- **Log** (Settings > Log). Every line has a category (Information, Automation, Warning, Error, Recovery, System); filter by
+  category, emulator, level and words. Long entries fold (double-click opens them), *Follow new lines* can be turned off
+  to read in peace, and *Copy* / *Copy diagnostics* put the visible lines or a status summary on the clipboard.
+  A warning or error repeated within 5 seconds is folded into "(the line above repeated N more time(s))".
+- **Compact mode** (Ctrl+M, the tray menu, or Settings > General): a small window with the status, what Crest is doing,
+  run count and time, a warning if something needs you, and Start / Pause / Stop. It uses the same controls as the big
+  window; the big window is only hidden. Its place and size are remembered.
+- **Notifications** (Settings > Notifications): Windows notifications for a failed session, a finished session, a stuck
+  warning, or a game restart. Off until you turn it on; optionally only while the window is hidden; at most one per kind per
+  emulator per minute.
+- **System-wide hotkeys** (Settings > Keyboard shortcuts > System-wide): Stop, Pause/Resume and Compact window. Any
+  combination such as `ctrl+alt+s` or `f12`; a plain letter is refused. Needs the `pynput` package, as before.
+- **Tray:** the first menu line and the hover text show what Crest is doing; a menu item turns notifications on or off.
+- **Profiles** (Settings > Profiles): save an emulator's Crest settings under a name and apply them again (with a preview
+  of what changes). A profile holds Crest's own settings only, not the palace schedule, accounts or Discord. Export and
+  import one as a file. Values are checked on apply: unknown or invalid ones are skipped and listed.
+- **Stuck watch** (Settings > Health): after 8 minutes (changeable, or off) without progress it writes one warning to the
+  Log, raises a *stuck* alert and shows a note in the compact window. It never presses anything: restarting is still the
+  engine's job (24/7 mode, "Max game restarts per day").
+- **Health** (Settings > Health): quick local checks (is Crest ready, a restart limit when 24/7 mode is on, memory and
+  CPU of this app, disk space, recent errors, recent sessions) with Fix buttons that ask first; *Full setup check* runs the
+  slower ADB and emulator checks. **Create diagnostic bundle** writes one zip (version, status, health, recent log, error
+  log, config with secrets removed, newest session summaries) to a place you choose. It never contains screenshots,
+  template pictures, your Discord token or webhook, or license keys, and nothing is uploaded.
+
 ## Daily Crest Palace selector
 
 Settings > Automation > **Palace Selector** chooses which Crest Palace Crest opens each day, using a picture of
@@ -110,6 +145,11 @@ that palace instead of one tile you captured by hand.
   settings as before).
 - **The day** turns over at the game's reset, 6 AM UTC-6, not at your PC's midnight. The page shows today's palace
   and whether its picture is there.
+- **My time zone** (*This computer*, which follows your PC and its daylight saving, or a fixed `UTC+HH:MM` such as
+  `UTC+10:00` for Guam) shows each palace's slot in your own days and times: a "Next 7 days" list, the start and end
+  under every weekday row, and when today's palace changes. It only changes what is *shown*; which palace runs is
+  always decided by the game day, so the zone can never make Crest open a different palace. It is saved as
+  `timezone` in `data/lite/palace_schedule.json` (a file without it uses *This computer*).
 - **Crest opens only today's palace.** The picture is looked for on the Crest Palace screen at any size (the
   GS Companion banners are not the game's own pixels). If the picture file is missing, nothing is chosen for today,
   or that palace is not on the screen (palaces rotate; the cycle does not know which days a palace is open), Crest

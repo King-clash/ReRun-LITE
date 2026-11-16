@@ -41,11 +41,19 @@ class PalacePageMixin:
 
         g = ios.Group(wrap, header="Selector",
                       footer="Picks which Crest Palace to open, by the game's day (it turns over at the 6 AM UTC-6 reset, "
-                             "not at your PC's midnight). Off: Crest uses its own palace settings as before.")
+                             "not at your PC's midnight). Your time zone only changes how the times below are shown: the "
+                             "palace for each game day never changes. Off: Crest uses its own palace settings as before.")
         g.pack(fill="x", pady=(px(14), 0))
         self._pal_mode = ios.Select(g.row("Mode"), values=list(palaces.MODES.values()), command=self._pal_save)
         self._pal_mode.set(palaces.MODES[sched.mode])
         self._pal_mode.pack()
+        self._pal_tz_labels = dict(palaces.tz_choices())               # saved value -> label
+        self._pal_tz_values = {v: k for k, v in self._pal_tz_labels.items()}
+        self._pal_tz = ios.Select(g.row("My time zone", "The palace times below are shown in this zone. 'This computer' "
+                                        "follows your PC, daylight saving included."),
+                                  values=list(self._pal_tz_labels.values()), command=self._pal_tz_changed, accent=True)
+        self._pal_tz.set(self._pal_tz_labels.get(sched.timezone, self._pal_tz_labels[palaces.TZ_COMPUTER]))
+        self._pal_tz.pack()
 
         card = ios.Card(wrap, pad=10)
         card.pack(fill="x", pady=(px(14), 0))
@@ -61,12 +69,28 @@ class PalacePageMixin:
                              "'Shrine of Cursed Claw: images/shrine_of_cursed_claw.png' to palaces.yaml.",
                        "orange").pack(fill="x", pady=(px(14), 0))
 
+        if sched.mode != "off" and names:
+            gs = ios.Group(wrap, header=f"Next 7 days in your time zone ({palaces.zone_name(sched.timezone)})",
+                           footer="Each palace is open for one game day, from the 6 AM UTC-6 reset to the next one. These are "
+                                  "those slots in your own days and times, so you can see when the palace changes.")
+            gs.pack(fill="x", pady=(px(24), 0))
+            for slot in palaces.slots(root, 7):
+                who = slot.palace.name if slot.palace else (slot.problem or "no palace")
+                right = gs.row(who, f"{slot.local_day} {slot.start.strftime('%H:%M')} to "
+                                    f"{slot.end.strftime('%a %H:%M')}   ·   game {slot.day}"
+                               + (f"   ·   {slot.problem}" if slot.palace and slot.problem else ""))
+                tk.Label(right, text=slot.start.strftime("%d %b"), bg=C["card"], fg=C["secondary"],
+                         font=F["footnote_semi"]).pack()
+
         gw = ios.Group(wrap, header="Weekday table",
-                       footer="Used in Weekday table mode: the palace that runs on each game weekday.")
+                       footer="Used in Weekday table mode: the palace that runs on each game weekday. The grey line under each "
+                              "day is when that day's slot starts and ends in your time zone.")
         gw.pack(fill="x", pady=(px(24), 0))
         self._pal_week = {}
         for day in palaces.DAYS:
-            sel = ios.Select(gw.row(day), values=[NONE] + names, command=self._pal_save, accent=True)
+            slot = palaces.next_slot_for_day(root, day)
+            sel = ios.Select(gw.row(day, f"your time: {palaces.fmt_slot(slot.start, slot.end, sched.timezone)}"),
+                             values=[NONE] + names, command=self._pal_save, accent=True)
             sel.set(sched.week.get(day) if sched.week.get(day) in names else NONE)
             sel.pack()
             self._pal_week[day] = sel
@@ -110,9 +134,10 @@ class PalacePageMixin:
         mode = next((k for k, v in palaces.MODES.items() if v == self._pal_mode.get()), "off")
         week = {d: s.get() for d, s in self._pal_week.items() if s.get() in self._pal_names}
         only = [n.strip() for n in self._pal_only_var.get().split(",") if n.strip()]
-        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only)
+        tz = self._pal_tz_values.get(self._pal_tz.get(), old.timezone)
+        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only, tz)
 
-    def _pal_save(self, *_a):
+    def _pal_save(self, *_a, rebuild: bool = True):
         s = self._pal_schedule()
         if s.mode == "cycle" and not s.cycle_anchor:
             s.cycle_start, s.cycle_anchor = self._pal_start.get(), palaces.game_date().isoformat()
@@ -125,6 +150,11 @@ class PalacePageMixin:
         self._pal_refresh_today()
         self._status_sig = None            # the chip and badges re-check the palace at once
         self.flash("Palace selector saved", "ok")
+        if rebuild:                        # the "next 7 days" and weekday labels follow the new choices
+            self.after_idle(self._pal_build)
+
+    def _pal_tz_changed(self, *_a):
+        self._pal_save()
 
     def _pal_start_changed(self):
         s = self._pal_schedule()
@@ -136,18 +166,22 @@ class PalacePageMixin:
     def _pal_only_typed(self):
         if getattr(self, "_pal_job", None):
             self.after_cancel(self._pal_job)
-        self._pal_job = self.after(700, self._pal_save)
+        self._pal_job = self.after(700, lambda: self._pal_save(rebuild=False))   # typing: don't rebuild the field you are in
 
     def _pal_refresh_today(self):
         c = palaces.choose(self.m.root)
         gd = c.game_date.strftime("%a %d %b")
+        tz = palaces.load_schedule(self.m.root).timezone
+        switch = (f"\nChanges at {palaces.fmt_when(c.ends, tz)} your time ({palaces.zone_name(tz)}), "
+                  f"in {palaces.fmt_left(palaces.until_switch())}.") if c.ends else ""
         if c.mode == "off":
             text, fg = "Selector is off. Crest uses its own palace settings.", C["secondary"]
         elif c.ok:
-            text, fg = (f"Today is {c.day} ({gd}, game clock): {c.palace.name}\n{c.palace.image}  -  picture found",
+            text, fg = (f"Today is {c.day} ({gd}, game clock): {c.palace.name}\n{c.palace.image}  -  picture found{switch}",
                         C["green"])
         else:
-            text, fg = f"Today is {c.day} ({gd}, game clock). {c.problem}\nCrest will stop instead of running another palace.", C["red"]
+            text, fg = (f"Today is {c.day} ({gd}, game clock). {c.problem}\nCrest will stop instead of running another "
+                        f"palace.{switch}"), C["red"]
         self._pal_today.configure(text=text, fg=fg)
 
     # ------------------------------------------------------------ import

@@ -73,6 +73,8 @@ class StatusMixin:
         g.pack(fill="x", pady=(0, px(24)), after=w)
         ios.Switch(g.row("Keep this window on top", "Same as the Pin button at the top right (Ctrl+T)."),
                    self._pin_var, command=lambda: self._apply_pin(bool(self._pin_var.get()))).pack()
+        ios.Button(g.row("Compact mode", "A small window with the status, run count and Start / Pause / Stop (Ctrl+M)."),
+                   "Open compact window", self.enter_compact, kind="tinted").pack()
         ios.Switch(g.row("Sound on alerts", "A short beep when Crest sends an alert (a crest kept, a problem)."),
                    self._sound_var, command=self._set_sound).pack()
         ios.Button(g.row("Open the data folder", "Where settings, history and crest pictures are kept."),
@@ -126,7 +128,12 @@ class StatusMixin:
                 self._problems = []
         run, paused = readiness.running(self.m)
         errored = [k for k, i in self.m.instances.items() if i.status == "error"]
-        if run:
+        phase_now = self.m.phase(run[0])[0] if run else ""
+        if run and phase_now == "recovering":
+            chip = ("Recovering", "orange")
+        elif run and phase_now == "waiting":
+            chip = ("Waiting for the game", "orange")
+        elif run:
             who = run[0] if len(run) == 1 else f"{len(run)} emulators"
             chip = (f"Crest running on {who}" if len(run) == 1 else f"Running on {who}", "green")
         elif paused:

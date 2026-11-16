@@ -124,6 +124,10 @@ class DashboardMixin:
         self._live_loop_on = False
         self._idle_energy: dict[str, tuple[int, int, float]] = {}
 
+    def _status_label(self, inst) -> str:
+        """The word shown for an emulator in the list (LITE shows a richer phase here)."""
+        return STATUS_TEXT.get(inst.status, inst.status)
+
     def selected(self) -> str | None:
         sel = self.inst_list.sel
         return sel if sel in self.m.instances else None
@@ -148,7 +152,7 @@ class DashboardMixin:
                 "name": name, "title": name, "state": inst.status,
                 "sub": f"{inst.serial}  ·  {scripts.get(inst.script, inst.script)}",
                 "detail": short(inst.detail or "Ready", 78),
-                "status": STATUS_TEXT.get(inst.status, inst.status),
+                "status": self._status_label(inst),
                 "meta": "  ·  ".join(meta)})
         self.inst_list.set_rows(items)
         if not self.selected() and self.m.instances:

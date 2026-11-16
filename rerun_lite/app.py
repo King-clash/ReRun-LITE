@@ -14,7 +14,7 @@ from pathlib import Path
 
 from PIL import ImageTk
 
-from rerun import ios, qol, updates
+from rerun import errlog, ios, qol, updates
 from rerun.gui import App
 from rerun.ios import px
 from rerun.scripts import SCRIPTS
@@ -28,6 +28,12 @@ from .old_versions import OldVersionsMixin
 from .quality import QualityMixin
 from .shortcuts_page import ShortcutsPageMixin
 from .extras import ExtrasMixin
+from .compact import CompactMixin
+from .feed_page import FeedMixin
+from .alerts_page import AlertsMixin
+from .profiles_page import ProfilesMixin
+from .health_page import HealthMixin
+from .sessions_page import SessionsMixin
 from .pages import SCHEDULE_NOTE, PagesMixin  # noqa: F401 - re-exported
 from .palace_page import PalacePageMixin
 from .splash import Splash
@@ -42,7 +48,7 @@ LITE_WORDS = (
 )
 
 
-class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, OldVersionsMixin, StatusMixin, ExtrasMixin,
+class LiteApp(HealthMixin, ProfilesMixin, AlertsMixin, FeedMixin, SessionsMixin, CompactMixin, PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, OldVersionsMixin, StatusMixin, ExtrasMixin,
               BackgroundMixin, UiStateMixin, App):
     WIP_TEXT = (f"{APP_NAME} is a Work In Progress.\n\nIt runs Auto Crest. Keep an eye on it "
                 "while it plays, and report anything odd.")
@@ -111,7 +117,8 @@ class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMix
             self._splash.close()
             self._splash = None
             self.deiconify()
-        self._apply_start_options()
+        done = self._apply_start_options()
+        self._restore_compact("minimized" in (done or []))
         self.after(4000, self._schedule_update_check)
         self.after(12000, self._ov_auto)                      # older copies of the app lying around: ask once
 
@@ -188,6 +195,10 @@ class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMix
 
     def _tick(self):
         super()._tick()
+        try:
+            self.m.refresh_phases()
+        except Exception as e:  # noqa: BLE001
+            errlog.note("lite.phases", e)
         self._refresh_status()
 
     def _progress(self, pct: float, text: str) -> None:

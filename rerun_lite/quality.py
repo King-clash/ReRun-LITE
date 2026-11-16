@@ -168,6 +168,7 @@ class QualityMixin:
             Command("Add an emulator by hand", "Emulators", self.add_instance, "", "new"),
             Command("Copy a status summary", "Window", self.copy_status, hint("copy_status"), "clipboard"),
             Command("Keep the window on top (Pin)", "Window", self._toggle_pin, hint("pin"), "always on top float"),
+            Command("Compact mode (small window)", "Window", self.toggle_compact, hint("compact"), "small mini minimal"),
             Command("Show the keyboard shortcuts", "Window", self.show_shortcuts, hint("help")),
             Command("Find older versions of ReRun LITE", "Window", self.show_old_versions, "", "remove delete clean up uninstall past previous"),
             Command("Open the data folder", "Window", self._open_data_folder, "", "files"),
@@ -226,7 +227,7 @@ class QualityMixin:
             "tab_templates": lambda: self._go_tab(2), "tab_settings": lambda: self._go_tab(3),
             "settings": lambda: self._go_tab(self._tab_settings), "next_tab": lambda: self._cycle_tab(1),
             "prev_tab": lambda: self._cycle_tab(-1), "start": self._toggle_run, "stop": self._stop_run,
-            "dry_run": self.dry_run_sel, "pin": self._toggle_pin, "copy_status": self.copy_status, "help": self.show_shortcuts,
+            "dry_run": self.dry_run_sel, "pin": self._toggle_pin, "compact": self.toggle_compact, "copy_status": self.copy_status, "help": self.show_shortcuts,
         }
 
     def _bind_shortcuts(self):
