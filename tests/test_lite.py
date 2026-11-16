@@ -312,7 +312,7 @@ def test_window_has_the_two_features_and_only_their_tools():
     try:
         assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "History", "Templates", "Settings"]
         assert app.title() == APP_NAME
-        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "appearance", "shortcuts", "app", "log"]
+        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "appearance", "artwork", "shortcuts", "app", "log"]
         for attr in ("_am_nav", "_farm_nav", "_tab_accounts", "_tab_farming", "unit_tree", "companion"):
             assert not hasattr(app, attr), f"{attr}: a page LITE must not build"
         crest_page = app.nb._pages[app._tab_crest]

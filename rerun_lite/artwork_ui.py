@@ -334,6 +334,8 @@ class ArtworkMixin:
             lab = r.get("art")
             if pic is None or not pic.path.is_file():
                 if lab is not None:
+                    if lab in r["paint"]:                        # other code walks this list (right-click menus): keep it true
+                        r["paint"].remove(lab)
                     lab.destroy()
                     r["art"] = None
                 continue

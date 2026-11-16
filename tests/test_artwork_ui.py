@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from rerun import ios  # noqa: E402
 from rerun_lite import artwork as art  # noqa: E402
 from rerun_lite import background, theme  # noqa: E402
 from tests.test_artwork import picture  # noqa: E402
@@ -22,6 +23,14 @@ TWO_INSTANCES = [{"name": "Instance 1", "serial": "127.0.0.1:5555"}, {"name": "I
 def add(app, cid, kind, name, size=(1600, 900), colour=(60, 90, 200), character="", alpha=False):
     src = picture(app.m.root / "src" / name, size, colour, alpha)
     return app._art_state().lib.add_user_image(cid, kind, src, character, Path(name).stem)
+
+
+def buttons(w) -> list[str]:
+    """The text of every ios.Button under `w` (they are canvases, so texts() does not see them)."""
+    out = [str(w._text)] if isinstance(w, ios.Button) else []
+    for c in w.winfo_children():
+        out += buttons(c)
+    return out
 
 
 def strips(app):
@@ -144,7 +153,7 @@ def test_the_artwork_page_gallery_search_favourites_and_reset():
         app._art_choose_collection("one-piece")
         pump(app, 4)
         detail = " ".join(texts(app._art_detail_host))
-        assert "Monkey D. Luffy" in detail and "Roronoa Zoro" in detail and "Add picture…" in detail
+        assert "Monkey D. Luffy" in detail and "Roronoa Zoro" in detail and "Add picture…" in buttons(app._art_detail_host)
         assert "Image position" in detail and "Header banner height" in detail
         app._art_pick_character("zoro")
         assert app._art_settings().character_id == "zoro"
@@ -181,7 +190,7 @@ def test_adding_and_removing_a_picture_from_the_page_and_a_bad_one_is_refused():
         app._art_add("frieren", "characters", "fern")
         assert wait_until(app, lambda: app._art_settings().variant.startswith("user:characters/fern--"), 8)
         assert app._art_settings().character_id == "fern" and any("Added" in t for t in app.shown)
-        assert "1 picture." in " ".join(texts(app._art_detail_host)) and "Remove" in texts(app._art_detail_host)
+        assert "1 picture." in " ".join(texts(app._art_detail_host)) and "Remove" in buttons(app._art_detail_host)
         bad = root / "not_a_picture.png"
         bad.write_text("nope", encoding="utf-8")
         artwork_ui.filedialog.askopenfilename = lambda **k: str(bad)
