@@ -1,11 +1,11 @@
 # ReRun LITE
 
-ReRun LITE (version 1.1.2) is a small app for Grand Summoners on BlueStacks. It does one job, and does it with
+ReRun LITE (version 1.2.0) is a small app for Grand Summoners on BlueStacks. It does one job, and does it with
 a calm, good-looking window: **Auto Crest**. It farms a Crest Palace on Auto-Loop, scraps the crests you do not
 want, and stops (and tells you on Discord) when a wanted one drops. A daily palace selector can pick which palace
 to farm for you.
 
-This is its own project, with its own version number (1.1.2), history, releases and update address. It is not a
+This is its own project, with its own version number (1.2.0), history, releases and update address. It is not a
 fork of ReRun and nothing here changes or depends on the ReRun repository. (The code that does the farming was
 copied from ReRun 1.2.1 when this repository was created; see "Where the code comes from".)
 
@@ -143,7 +143,7 @@ the first time it starts (the ReRun folder is not changed). LITE keeps its own s
 ## Updates
 
 LITE checks its own update address, `https://king-clash.github.io/ReRun-LITE/lite/`, for a signed manifest, and
-compares it with LITE's own version (1.1.2). Until a LITE update has been published there, **Settings > General >
+compares it with LITE's own version (1.2.0). Until a LITE update has been published there, **Settings > General >
 Check Now** says "No ReRun LITE updates have been published yet." A copy run from source only reports a new
 version; the built exe also installs it. `py tools/publish_lite_update.py --exe release/RerunLite/RerunLite.exe`
 writes the update site files (`updates_site/lite/`) for the `gh-pages` branch.

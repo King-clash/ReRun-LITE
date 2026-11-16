@@ -169,6 +169,7 @@ class QualityMixin:
             Command("Copy a status summary", "Window", self.copy_status, hint("copy_status"), "clipboard"),
             Command("Keep the window on top (Pin)", "Window", self._toggle_pin, hint("pin"), "always on top float"),
             Command("Show the keyboard shortcuts", "Window", self.show_shortcuts, hint("help")),
+            Command("Find older versions of ReRun LITE", "Window", self.show_old_versions, "", "remove delete clean up uninstall past previous"),
             Command("Open the data folder", "Window", self._open_data_folder, "", "files"),
             Command("Open the palace list", "Window", self._open_palace_file, "", "palaces.yaml"),
             Command("Import palace pictures from GS Companion", "Palaces", self._pal_import_from_palette, "", "banner images"),

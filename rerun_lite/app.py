@@ -24,6 +24,7 @@ from .icon import make_lite_icon
 from .manager import LiteManager
 from .appearance_page import AppearancePageMixin
 from .background import BackgroundMixin
+from .old_versions import OldVersionsMixin
 from .quality import QualityMixin
 from .shortcuts_page import ShortcutsPageMixin
 from .extras import ExtrasMixin
@@ -41,7 +42,7 @@ LITE_WORDS = (
 )
 
 
-class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, StatusMixin, ExtrasMixin,
+class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMixin, QualityMixin, OldVersionsMixin, StatusMixin, ExtrasMixin,
               BackgroundMixin, UiStateMixin, App):
     WIP_TEXT = (f"{APP_NAME} is a Work In Progress.\n\nIt runs Auto Crest. Keep an eye on it "
                 "while it plays, and report anything odd.")
@@ -112,6 +113,7 @@ class LiteApp(PagesMixin, PalacePageMixin, AppearancePageMixin, ShortcutsPageMix
             self.deiconify()
         self._apply_start_options()
         self.after(4000, self._schedule_update_check)
+        self.after(12000, self._ov_auto)                      # older copies of the app lying around: ask once
 
     # ================================================================ the look, and building the window from it
     def _init_look(self) -> None:

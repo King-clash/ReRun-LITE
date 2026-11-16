@@ -79,6 +79,8 @@ class StatusMixin:
                    "Open", self._open_data_folder, kind="tinted", small=True).pack()
         ios.Button(g.row("Open the palace list", "palaces.yaml, next to ReRun LITE (the images folder is beside it)."),
                    "Open", self._open_palace_file, kind="tinted", small=True).pack()
+        ios.Button(g.row("Older versions", "Finds older copies and downloads of ReRun LITE and lets you move them to the Recycle Bin."),
+                   "Find…", self.show_old_versions, kind="tinted", small=True).pack()
         ios.Button(g.row("Keyboard shortcuts", "Switch tabs, pin the window and more."),
                    "Show", self.show_shortcuts, kind="tinted", small=True).pack()
 

@@ -73,7 +73,7 @@ def apply(root: str | Path) -> None:
             return updates.CheckResult(error=NOT_LITE)
         return res
 
-    updates.__version__ = LITE_VERSION                        # LITE's own number (1.1.2), not the engine copy's
+    updates.__version__ = LITE_VERSION                        # LITE's own number (1.2.0), not the engine copy's
     updates.STATE_FILE = f"{DATA_DIR}/content_state.json"
     updates.BASELINE_FILE = "lite_content_baseline.json"    # written next to the exe by build_lite.py
     updates.STAGING_DIR = f"{DATA_DIR}/update_staging"
