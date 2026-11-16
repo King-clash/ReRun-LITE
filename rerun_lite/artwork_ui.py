@@ -199,7 +199,8 @@ class ArtStrip(tk.Frame):
         header = self.role == "header"
         caption = (f"{col.name}  ·  {who.name}" if who and s.show_character and c.resolver.character(s) else col.name) if col else ""
         spec = art.StripSpec(w, h, str(pic.path), _stamp(pic.path), s.anchor, C["card"], col.accent if col else C["blue"],
-                             0.92 if header else 0.38, 0.0, caption if header else "", C["label"])
+                             0.92 if header else 0.38, 0.0, caption if header else "", C["label"],
+                             mode="character" if pic.kind == "characters" else "cover")
         if spec == self._want:
             return
         self._want = spec
@@ -221,7 +222,7 @@ class ArtStrip(tk.Frame):
 # ================================================================================================ E: gallery cards
 class AnimeTile(tk.Frame):
     """One anime in the gallery: a small picture of the real window with its artwork, its title and the chosen character."""
-    W, H = 204, 116
+    W, H = 220, 138
 
     def __init__(self, parent, col: art.Collection, selected: bool, favourite: bool, line: str, command):
         super().__init__(parent, bg=C["card"], cursor="hand2")
@@ -487,11 +488,12 @@ class ArtworkMixin:
     def _art_tile_image(self, tile: AnimeTile, col: art.Collection, s: Settings, pal: tuple) -> None:
         c = self._art_state()
         r = c.resolver
-        bg, hd, pt, pn = r.background(s), r.header(s), r.portrait(s) or r.character(s), r.panel(s)
-        paths = tuple(str(x.path) if x else "" for x in (bg, hd, pt, pn))
+        bg, hd, pt, pn, who = r.background(s), r.header(s), r.portrait(s), r.panel(s), r.character(s)
+        paths = tuple(str(x.path) if x else "" for x in (bg, hd, pt, pn, who))
         spec = art.PreviewSpec(px(AnimeTile.W), px(AnimeTile.H), pal, col.accent, col.monogram, paths[0], paths[1],
                                paths[2] if s.show_instance else "", paths[3], s.opacity, s.blur, s.anchor,
-                               tuple(_stamp(Path(p)) if p else () for p in paths))
+                               tuple(_stamp(Path(p)) if p else () for p in paths),
+                               header_character=bool(hd and hd.kind == "characters"), character=paths[4])
         hit = c.cache.get(("preview", spec))
         if hit is not None:
             tile.set_image(hit)

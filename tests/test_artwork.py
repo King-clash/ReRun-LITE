@@ -158,46 +158,41 @@ def test_a_folder_of_the_users_own_pictures_is_imported_once():
         shutil.rmtree(root, ignore_errors=True)
 
 
-def test_the_personal_art_fetcher_matches_characters_and_fills_the_import_layout():
-    """Offline: Jikan-shaped answers in, the folder layout the importer reads out, and the import takes all of it."""
+def test_the_personal_art_fetcher_covers_every_character_slot_and_feeds_the_importer():
+    """Offline: the curated list names a picture for every slot of every anime; downloading it makes the folder layout the
+    importer reads, and the importer takes every one."""
     sys.path.insert(0, str(ROOT / "tools"))
     from tools import fetch_personal_art as fp
-    roster = [{"character": {"name": "Gojo, Satoru", "images": {"jpg": {"image_url": "https://x/gojo.jpg"}}}, "favorites": 9},
-              {"character": {"name": "Gojo, Other", "images": {"jpg": {"image_url": "https://x/other.jpg"}}}, "favorites": 1},
-              {"character": {"name": "Luffy, Monkey D.", "images": {"jpg": {"image_url": "https://x/luffy.jpg"}}}, "favorites": 5},
-              {"character": {"name": "Nobody", "images": {"jpg": {"image_url": "https://cdn/questionmark_23.gif"}}}}]
-    assert fp.pick_character("Gojo Satoru", roster)["character"]["name"] == "Gojo, Satoru"
-    assert fp.pick_character("Monkey D. Luffy", roster)["character"]["name"] == "Luffy, Monkey D."
-    assert fp.pick_character("Straw Hat Pirates", roster) is None and fp.pick_character("", roster) is None
-    assert fp.character_picture(roster[3]) == "" and fp.character_picture(roster[0]) == "https://x/gojo.jpg"
-    assert fp.anime_pictures([{"jpg": {"large_image_url": "https://x/p1l.jpg"}}, {"jpg": {}}]) == ["https://x/p1l.jpg"]
-
-    def fetch(url):
-        if url.endswith("/pictures"):
-            return {"data": [{"jpg": {"large_image_url": f"https://x/pic{i}.jpg"}} for i in range(4)]}
-        if url.endswith("/characters"):
-            return {"data": roster}
-        if "/anime/" in url:
-            mal = int(url.rsplit("/", 1)[1])
-            return {"data": {"mal_id": mal, "title": "Some Title"}}
-        return {"data": [{"mal_id": 3, "title": "Searched"}]}
-
+    pics, crops = fp.load_sources()
+    cols = art.load_collections(ROOT)
+    assert list(pics) == IDS or sorted(pics) == sorted(IDS)
+    for cid, col in cols.items():
+        assert {c.id for c in col.characters} <= set(pics[cid]), (cid, {c.id for c in col.characters} - set(pics[cid]))
+    assert all(u.startswith("https://static.wikia.nocookie.net/") for slots in pics.values() for u in slots.values())
+    assert fp.extension("https://x/y/a/b/Foo.PNG/revision/latest?cb=1") == "png" and fp.extension("https://x/Jinwoo4.jpg/revision/latest") == "jpg"
     out = Path(tempfile.mkdtemp(prefix="rerunlite_fetch_"))
     root = workspace(copy_assets=False)
     try:
+        got = []
+
         def get(url, dest):
-            picture(dest, (300, 450))
+            got.append(url)
+            picture(dest, (600, 400) if "tokyoghoul" in url else (300, 450))
             return True
         lines: list[str] = []
-        rep = fp.run(out / "inbox", ["jujutsu-kaisen", "one-piece", "initial-d"], False, fetch, get, lines.append)
-        assert "gojo" in rep["jujutsu-kaisen"]["got"] and "banner" in rep["jujutsu-kaisen"]["got"]
-        assert rep["one-piece"]["missing"] == [] and "straw-hats" in rep["one-piece"]["got"]     # a crew gets an anime picture
-        assert rep["initial-d"]["mal"] == 3                                                       # no fixed id: found by search
-        assert (out / "inbox" / "jujutsu-kaisen" / "gojo.jpg").exists() and (out / "inbox" / "jujutsu-kaisen" / "background-1.jpg").exists()
-        assert fp.run(out / "none", ["frieren"], True, fetch, get, lines.append)["frieren"]["got"] == []   # --check saves nothing
-        assert not (out / "none").exists()
+        rep = fp.run(out / "inbox", ["tokyo-ghoul", "jujutsu-kaisen"], get, fp.SOURCES, lines.append)
+        assert rep["tokyo-ghoul"]["missing"] == [] and len(rep["jujutsu-kaisen"]["got"]) == 4
+        with Image.open(out / "inbox" / "tokyo-ghoul" / "kaneki.png") as im:
+            assert im.width == 306                                                              # the front figure only: 600/2 + 6
+        n = len(got)
+        fp.run(out / "inbox", ["tokyo-ghoul"], get, fp.SOURCES, lines.append)
+        assert len(got) == n                                                                    # a re-run downloads nothing again
+        for m in (out / "inbox").rglob("*.cropped"):
+            m.unlink()
         added, notes = art.Library(root).import_folder(out / "inbox")
-        assert len(added) >= 12 and not [n for n in notes if "megumi" not in n and "sukuna" not in n], notes
+        assert len(added) == 6 and notes == [], notes
+        failing = fp.run(out / "x", ["frieren"], lambda u, d: False, fp.SOURCES, lines.append)
+        assert failing["frieren"]["missing"] == ["frieren", "fern", "stark"]
     finally:
         shutil.rmtree(out, ignore_errors=True)
         shutil.rmtree(root, ignore_errors=True)

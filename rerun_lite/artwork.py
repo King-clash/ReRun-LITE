@@ -48,7 +48,7 @@ USER_MANIFEST = "user_manifest.json"
 # what an anime's appearance is until the user changes it (a collection's own config may override any of these)
 DEFAULT_APPEARANCE = {"backgroundOpacity": 0.18, "blur": 2, "position": "center", "showBackground": True,
                       "showCharacterArtwork": True, "showHeaderArtwork": True, "showInstanceArtwork": False,
-                      "showPanelArtwork": True, "headerHeight": 64}
+                      "showPanelArtwork": True, "headerHeight": 96}
 
 
 class ArtError(Exception):
@@ -745,6 +745,7 @@ class StripSpec:
     caption: str
     caption_fg: str
     fade: bool = True
+    mode: str = "cover"        # "cover": fill the strip; "character": head and shoulders at the right, on the accent colour
 
 
 def render_strip(spec: StripSpec, cache: ImageCache | None = None) -> Image.Image:
@@ -755,7 +756,20 @@ def render_strip(spec: StripSpec, cache: ImageCache | None = None) -> Image.Imag
     src = None
     if spec.path:
         src = cache.source(spec.path, max(640, min(1920, w))) if cache is not None else load_rgba(spec.path, 1920)
-    art = fit_cover(src, w, h, spec.anchor) if src is not None else placeholder(w, h, spec.accent, spec.base)
+    character = spec.mode == "character" and src is not None
+    if character:
+        # a tall full-body picture stretched across a wide strip would show only a slice of torso: show the top of it
+        # (head and shoulders) as a block at the right, fading in from the left, on a plain accent-coloured ground
+        bw = min(w, round(h * 1.5))
+        block = fit_cover(src, bw, h, (0.5, 0.0)).convert("RGBA")
+        edge = Image.new("L", (bw, 1))
+        edge.putdata([round(255 * min(1.0, x / max(1, bw * 0.28))) for x in range(bw)])
+        block.putalpha(ImageChops.multiply(block.getchannel("A"), edge.resize((bw, h))))
+        art = placeholder(w, h, spec.accent, spec.base).convert("RGBA")
+        art.alpha_composite(block, (max(0, w - bw - 12), 0))
+        spec = StripSpec(**{**spec.__dict__, "fade": False, "strength": 1.0, "blur": 0.0})
+    else:
+        art = fit_cover(src, w, h, spec.anchor) if src is not None else placeholder(w, h, spec.accent, spec.base)
     if spec.blur > 0:
         art = art.convert("RGBA").filter(ImageFilter.GaussianBlur(spec.blur * max(0.4, w / 1280)))
     art = art.convert("RGBA")
@@ -778,7 +792,9 @@ def render_strip(spec: StripSpec, cache: ImageCache | None = None) -> Image.Imag
         cw, ch = tw[2] - tw[0], tw[3] - tw[1]
         x1, y1 = w - 10, h - 8
         x0, y0 = x1 - cw - 16, y1 - ch - 10
-        if x0 > w * 0.3:
+        if character:                                            # the picture is at the right: the caption goes left
+            x0, x1 = 12, 12 + cw + 16
+        if character or x0 > w * 0.3:
             d.rounded_rectangle((x0, y0, x1, y1), 6, fill=_rgb(spec.base) + (215,))
             d.text((x0 + 8 - tw[0], y0 + 5 - tw[1]), spec.caption, font=f, fill=_rgb(spec.caption_fg))
     return out.convert("RGB")
@@ -815,11 +831,14 @@ class PreviewSpec:
     blur: float = 2.0
     anchor: tuple = (0.5, 0.5)
     stamps: tuple = ()
+    header_character: bool = False      # the header picture is a character (drawn head and shoulders), not a banner
+    character: str = ""                 # the chosen character's picture: shown whole, large, at the right of the card
 
 
 def render_preview(spec: PreviewSpec, cache: ImageCache | None = None) -> Image.Image:
     """The Auto Crest window in miniature, drawn from the same colours and the same artwork as the real one."""
-    w, h = spec.w, spec.h
+    full_w, h = spec.w, spec.h
+    w = int(full_w * 0.6) if spec.character else full_w       # the miniature window; the character takes the rest
     bg, card, bar, label, secondary, sep, accent = spec.palette
     im = Image.new("RGB", (w, h), _rgb(bg))
 
@@ -844,7 +863,8 @@ def render_preview(spec: PreviewSpec, cache: ImageCache | None = None) -> Image.
     y = bar_h + 5
     if spec.header or spec.monogram:
         hh = max(10, h // 6)
-        strip = render_strip(StripSpec(w - 12, hh, spec.header, (), spec.anchor, bg, spec.accent, 0.9, 0.0, "", label), cache) \
+        strip = render_strip(StripSpec(w - 12, hh, spec.header, (), spec.anchor, bg, spec.accent, 0.9, 0.0, "", label,
+                                       mode="character" if spec.header_character else "cover"), cache) \
             if spec.header else placeholder(w - 12, hh, spec.accent, bg, spec.monogram)
         im.paste(strip, (6, y))
         y += hh + 5
@@ -874,7 +894,19 @@ def render_preview(spec: PreviewSpec, cache: ImageCache | None = None) -> Image.
     # the live view on the right stays solid and artwork-free
     d.rounded_rectangle((6 + cw + 8, bar_h + 5, w - 6, h - 8), 3, fill=_rgb(card), outline=_rgb(sep))
     d.rectangle((6 + cw + 14, bar_h + 11, w - 12, bar_h + 14), fill=_rgb(secondary))
-    return im
+    if not spec.character:
+        return im
+    out = Image.new("RGB", (full_w, h))
+    out.paste(im, (0, 0))
+    pw = full_w - w
+    out.paste(placeholder(pw, h, spec.accent, bg), (w, 0))
+    pic = src(spec.character, 640)
+    if pic is not None:                                          # the whole character, as large as the card allows
+        s_ = min((pw - 6) / pic.width, (h - 4) / pic.height)
+        fit = pic.resize((max(1, round(pic.width * s_)), max(1, round(pic.height * s_))), Image.LANCZOS)
+        out.paste(fit.convert("RGB"), (w + (pw - fit.width) // 2, h - fit.height - 2), fit.getchannel("A"))
+    ImageDraw.Draw(out).line((w, 0, w, h), fill=_rgb(sep))
+    return out
 
 
 __all__ = ["ArtError", "ArtImage", "Character", "Collection", "ImageCache", "Library", "Manifest", "Prefs", "PreviewSpec",

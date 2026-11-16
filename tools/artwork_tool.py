@@ -57,7 +57,7 @@ CATALOG = [
     ("hunter-x-hunter", "Hunter x Hunter", "#3FAE5A",
      [("gon", "Gon Freecss"), ("killua", "Killua Zoldyck"), ("kurapika", "Kurapika"), ("hisoka", "Hisoka Morow")]),
     ("initial-d", "Initial D", "#E04A3C",
-     [("ae86", "Toyota AE86"), ("takumi", "Takumi Fujiwara")]),
+     [("takumi", "Takumi Fujiwara"), ("ae86", "Toyota AE86")]),
     ("dragon-ball", "Dragon Ball", "#F28C1E",
      [("goku", "Son Goku"), ("vegeta", "Vegeta"), ("gohan", "Son Gohan")]),
     ("spy-x-family", "Spy x Family", "#E8678F",
