@@ -60,17 +60,33 @@ if __name__ == "__main__":
         from rerun_lite import restart
         restart.relaunch(root, ["--selftest", sys.argv[sys.argv.index("--restart-test") + 1]])
         raise SystemExit(0)
+    if "--seed-test" in sys.argv:           # a personal build restores its own files into an empty folder: report what happened
+        import json as _json
+        from rerun_lite import background, palaces, seed
+        copied = seed.restore(root)
+        video = background.find_video(root)
+        try:
+            listed = len(palaces.read_list(root))
+        except ValueError:
+            listed = -1
+        pics = sum(1 for p in palaces.read_list(root) if (root / p.image).is_file()) if listed > 0 else 0
+        Path(sys.argv[sys.argv.index("--seed-test") + 1]).write_text(_json.dumps(
+            {"copied": len(copied), "video": video.name if video else None, "palaces": listed, "pictures": pics,
+             "schedule": (root / "data" / "lite" / "palace_schedule.json").is_file()}), encoding="utf-8")
+        raise SystemExit(0)
     if "--selftest" in sys.argv:
         raise SystemExit(selftest(Path(sys.argv[sys.argv.index("--selftest") + 1])))
     try:
-        from rerun_lite import palettes
-        from rerun_lite.splash import Splash
         import json
-        try:                                                              # the chosen theme's colours, before anything heavy loads
-            key = json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8")).get("theme")
-        except (OSError, ValueError, AttributeError):
-            key = None
-        splash = Splash(None, root, "load", "Starting ReRun LITE", theme_key=key if key in palettes.LOOKS else palettes.DEFAULT)
+
+        from rerun_lite import appearance
+        from rerun_lite.splash import Splash
+        try:                                                              # the saved look's colours, before anything heavy loads
+            ui = json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            ui = {}
+        splash = Splash(None, root, "load", "Starting ReRun LITE",
+                        colors=appearance.splash_colors(appearance.from_ui(ui if isinstance(ui, dict) else {})))
 
         def load():
             splash.set(12, "Loading the window kit…")

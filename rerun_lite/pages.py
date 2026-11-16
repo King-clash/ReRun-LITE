@@ -24,8 +24,9 @@ PAGE_NAMES = {"Dashboard": ("Auto Crest", "Auto Crest", "home"), "Settings": ("G
 # Settings side list: one entry per script (the original page has a Script chooser; here the list is the chooser),
 # then Discord, then the app's own pages. A caption is drawn above the entries named in SETTINGS_HEADS.
 SETTINGS_SECTIONS = [(MAIN_SCRIPT, "Auto Crest"), ("palaces", "Palace Selector"),
-                     ("discord", "Discord"), ("app", "General"), ("log", "Log")]
-SETTINGS_HEADS = {MAIN_SCRIPT: "Automation", "discord": "Alerts", "app": "App"}
+                     ("discord", "Discord"), ("appearance", "Appearance"), ("shortcuts", "Keyboard shortcuts"), ("app", "General"),
+                     ("log", "Log")]
+SETTINGS_HEADS = {MAIN_SCRIPT: "Automation", "discord": "Alerts", "appearance": "App"}
 SCHEDULE_NOTE = ("Starts Crest on this emulator every day at that time, using your PC's clock. "
                  "Crest is the only script ReRun LITE runs.")
 
@@ -78,7 +79,8 @@ class PagesMixin:
         self._set_stage = tk.Frame(body, bg=C["bg"])
         self._set_stage.pack(side="left", fill="both", expand=True, padx=(px(8), 0))
         self._set_pages: dict[str, tk.Misc] = {}
-        for key, build in (("scripts", self._build_settings), ("palaces", self._build_palace_page), ("discord", self._build_discord),
+        for key, build in (("scripts", self._build_settings), ("palaces", self._build_palace_page), ("discord", self._build_discord), ("appearance", self._build_appearance_page),
+                           ("shortcuts", self._build_shortcuts_page),
                            ("app", self._build_app_settings), ("log", self._build_log)):
             self._host = self._set_stage
             try:
@@ -137,11 +139,63 @@ class PagesMixin:
         self._set_nav.select(script)
 
     def _load_settings_form(self):
-        super()._load_settings_form()
+        if self._settings_script_id() == MAIN_SCRIPT and self.set_inst.get():
+            self._crest_form()
+        else:
+            super()._load_settings_form()
         kids = self.form.winfo_children()
         sched = kids[-1] if kids else None          # the "Schedule" group is the last thing in the form
         if isinstance(sched, ios.Group) and sched.footer is not None:
             sched.footer.configure(text=SCHEDULE_NOTE)
+
+    def _crest_form(self):
+        """Crest's 22 settings as five short groups instead of one long list. Same settings, same variables, same Save."""
+        for w in self.form.winfo_children():
+            w.destroy()
+        self.form_vars = {}
+        inst = self.set_inst.get()
+        values = self.m.script_settings(inst, MAIN_SCRIPT)
+        by_key = {st.key: st for st in SCRIPTS[MAIN_SCRIPT].SETTINGS}
+        groups = [(f"Crest · {inst}", "Run", ("runs", "past_party", "max_minutes", "stop_at", "mode_247", "max_restarts_per_day"), None),
+                  (None, "Energy and potions", ("potion", "potion_limit", "crystal_refresh", "crystal_limit", "game_refill", "energy_floor"), None),
+                  (None, "What to keep", ("keep", "stop_on_unknown", "verify_text"), None),
+                  (None, "Getting to the palace", ("start_home", "home_fail", "allow_back", "palace_name", "palace_by_day", "quest_name"), None),
+                  (None, "Troubleshooting", ("save_debug",), None)]
+        used = {k for _, _, keys, _ in groups for k in keys}
+        extra = tuple(k for k in by_key if k not in used)
+        if extra:
+            groups.append((None, "More", extra, None))
+        first = True
+        for _, title, keys, _ in groups:
+            keys = [k for k in keys if k in by_key]
+            if not keys:
+                continue
+            g = ios.Group(self.form, header=title if not first else f"{title}  ·  {inst}")
+            g.pack(fill="x", pady=(0 if first else px(20), 0))
+            first = False
+            for key in keys:
+                st = by_key[key]
+                right = g.row(st.label, st.help or None)
+                if st.type == "bool":
+                    var = tk.BooleanVar(value=bool(values.get(key)))
+                    ios.Switch(right, var).pack()
+                elif st.type == "choice":
+                    var = tk.StringVar(value=str(values.get(key)))
+                    ios.Select(right, values=st.choices, variable=var).pack()
+                elif st.type == "int":
+                    var = tk.StringVar(value=str(values.get(key)))
+                    ios.Stepper(right, var).pack()
+                else:
+                    var = tk.StringVar(value=str(values.get(key)))
+                    ios.Field(right, var, width=26).pack()
+                self.form_vars[key] = var
+        sch = (self.m.config.get("schedules") or {}).get(inst, {})
+        gs = ios.Group(self.form, header=f"Schedule · {inst}", footer=SCHEDULE_NOTE)
+        gs.pack(fill="x", pady=(px(20), 0))
+        self.sched_on = tk.BooleanVar(value=bool(sch.get("enabled")))
+        ios.Switch(gs.row("Start every day"), self.sched_on).pack()
+        self.sched_time = tk.StringVar(value=str(sch.get("time", "06:05")))
+        ios.Field(gs.row("At (24-hour HH:MM)"), self.sched_time, width=6, justify="right").pack()
 
     def _dashboard_in_view(self) -> bool:
         return self.nb.index() == self._tab_crest

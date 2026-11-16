@@ -13,7 +13,7 @@ never changes what LITE is offered. The manifest is marked "product": "lite"; LI
 It holds only the templates LITE's scripts use (rerun_lite/content.py).
 
 Same signing key and the same publish function as the full app. The version offered for --exe is
-rerun_lite/__init__.py's __version__ (LITE has its own version number, 1.0.0 to start): build RerunLite.exe from the same
+rerun_lite/__init__.py's __version__ (LITE has its own version number, 1.0.1 now): build RerunLite.exe from the same
 source you publish.
 """
 from __future__ import annotations

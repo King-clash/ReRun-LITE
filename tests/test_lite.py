@@ -93,7 +93,8 @@ def pump(app, n: int = 6) -> None:
 def open_lite(instances: list[dict] | None = None, backdrop: bool = False):
     root = lite_root(instances, real_templates=True)
     (root / "data" / "lite").mkdir(parents=True, exist_ok=True)
-    (root / "data" / "lite" / "ui.json").write_text(json.dumps({"bg_on": backdrop}), encoding="utf-8")   # no video unless asked
+    look = {"look": "ahri", "mode": "dark"} if backdrop else {"look": "plain", "mode": "dark"}          # a video only for Ahri
+    (root / "data" / "lite" / "ui.json").write_text(json.dumps({"appearance": look}), encoding="utf-8")
     m, inst = manager(root)
     app = LiteApp(m)
     app.errors = []
@@ -103,6 +104,14 @@ def open_lite(instances: list[dict] | None = None, backdrop: bool = False):
     app.geometry("1140x840+30+30")
     pump(app)
     return root, m, inst, app
+
+
+def wait_until(app, cond, seconds: float = 8.0) -> bool:
+    t0 = time.time()
+    while not cond() and time.time() - t0 < seconds:
+        app.update()
+        time.sleep(0.02)
+    return bool(cond())
 
 
 def close(app, root) -> None:
@@ -303,7 +312,7 @@ def test_window_has_the_two_features_and_only_their_tools():
     try:
         assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "History", "Templates", "Settings"]
         assert app.title() == APP_NAME
-        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "app", "log"]
+        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "appearance", "shortcuts", "app", "log"]
         for attr in ("_am_nav", "_farm_nav", "_tab_accounts", "_tab_farming", "unit_tree", "companion"):
             assert not hasattr(app, attr), f"{attr}: a page LITE must not build"
         crest_page = app.nb._pages[app._tab_crest]
@@ -371,8 +380,8 @@ def test_settings_pages_are_the_originals_with_lite_names_and_places():
         words = texts(app._set_pages["discord"]) + texts(app._set_pages["app"])
         assert f"Connect When {APP_NAME} Starts" in words and f"{APP_NAME} {LITE_VERSION}" in words
         assert not [w for w in words if "Rerun" in w], [w for w in words if "Rerun" in w]
-        app._set_update_status("Up to date (Rerun 1.0.0)")
-        assert app.upd_status.cget("text") == f"Up to date ({APP_NAME} 1.0.0)"
+        app._set_update_status(f"Up to date (Rerun {LITE_VERSION})")
+        assert app.upd_status.cget("text") == f"Up to date ({APP_NAME} {LITE_VERSION})"
         # setup check: LITE's own two tested scripts, not Any Quest
         app._setup_body = tk.Frame(app)
         checks = [Check("Templates", True, "All templates for Any Quest, Crest and Login & Mail are captured.")]
@@ -501,31 +510,41 @@ def test_video_background_plays_behind_the_window_and_follows_it():
         (root / "background").mkdir()
         shutil.copy(ROOT / "assets" / "spirit_blossom.mp4", root / "background" / "mine.mp4")
         assert background.find_video(root).name == "mine.mp4"
-        # settings: off removes the second window and the colour key
-        app._bg_changed(bg_on=False)
+        # Appearance > Background: Off removes the second window and the colour key (the window is rebuilt: a new backdrop)
+        from dataclasses import replace
+        app.apply_appearance(replace(app._look, background="off"))
         app.update()
+        bd = app.backdrop
         assert not bd.active and bd.win is None and app.attributes("-transparentcolor") == ""
-        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["bg_on"] is False
-        app._bg_changed(bg_on=True, bg_dim="Strong")
-        assert bd.active and bd.player.dim == background.DIMS["Strong"]
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["appearance"]["background"] == "off"
+        app.apply_appearance(replace(app._look, background="auto"))
+        assert wait_until(app, lambda: app.backdrop.active)
+        app._bg_changed(bg_dim="Strong")
+        assert app.backdrop.player.dim == background.DIMS["Strong"]
         assert not app.errors, app.errors
     finally:
         app.backdrop.stop()
         close(app, root)
 
 
-def test_the_video_is_only_for_the_ahri_theme_and_a_missing_file_is_harmless():
-    from rerun_lite import background
+def test_the_video_is_not_used_in_classic_and_a_missing_file_is_harmless():
+    from dataclasses import replace
+
+    from rerun_lite import background, theme
     root, m, inst, app = open_lite(backdrop=True)
     try:
+        assert wait_until(app, lambda: app.backdrop.active)
         app.backdrop.stop()
-        assert background.find_video(root, str(root / "nope.mp4")).name == "spirit_blossom.mp4"       # falls back
-        from rerun_lite import theme
-        theme.ACTIVE = "dark"
-        assert app.backdrop.start() is False                                       # not the Ahri theme: no video, no colour key
+        assert background.find_video(root, str(root / "nope.mp4")).name == "spirit_blossom.mp4"       # falls back to the built-in
+        theme.ACTIVE = "classic"
+        assert app.backdrop.start() is False                                       # ReRun's own look: no video, no colour key
         theme.ACTIVE = "ahri"
-        app.backdrop.s["bg_path"] = str(root / "nope.mp4")
-        assert app.backdrop.start() is True                                        # the built-in video plays instead
+        app.apply_appearance(replace(app._look, background="custom", custom_video=str(root / "nope.mp4")))
+        app.update()
+        assert not app.backdrop.active and not app.errors, app.errors              # a missing file is just "no video found"
+        assert "No video found" in app._bg_label.cget("text") if getattr(app, "_bg_label", None) is not None else True
+        app.apply_appearance(replace(app._look, background="auto"))
+        assert wait_until(app, lambda: app.backdrop.active)                        # and the built-in plays again
     finally:
         app.backdrop.stop()
         close(app, root)
@@ -622,34 +641,37 @@ def test_clicking_the_video_does_not_raise_it_over_the_app():
         close(app, root)
 
 
-def test_ahri_is_its_own_theme_and_dark_and_light_are_the_original_black_and_white():
+def test_classic_is_the_original_black_and_white_and_plain_is_the_new_default():
+    from dataclasses import replace
+
+    from rerun_lite import appearance as ap
     from rerun_lite import theme
-    original_dark, original_light = dict(theme.CLASSIC_DARK), dict(theme.CLASSIC_LIGHT)
-    assert original_dark["bg"] == "#000000" and original_dark["card"] == "#1C1C1E"           # ReRun's own black
-    assert original_light["bg"] == "#F2F2F7" and original_light["card"] == "#FFFFFF"          # ... and white
-    assert theme.apply_palette("dark") == "dark" and ios.DARK == original_dark and not theme.is_ahri()
-    assert theme.apply_palette("light") == "light" and ios.LIGHT == original_light and ios.DARK == original_dark
-    assert theme.apply_palette("auto") == "auto" and ios.DARK == original_dark
-    assert theme.apply_palette("ahri") == "dark" and ios.DARK["bg"] == theme.AHRI["bg"] and theme.is_ahri()
-    assert theme.apply_palette("nonsense") == "dark" and theme.is_ahri()                      # unknown: the default theme
-    assert theme.apply_palette("dark") == "dark" and ios.DARK == original_dark                # and back again, unchanged
+    od, ol = dict(theme.CLASSIC_DARK), dict(theme.CLASSIC_LIGHT)
+    assert od["bg"] == "#000000" and od["card"] == "#1C1C1E" and ol["bg"] == "#F2F2F7" and ol["card"] == "#FFFFFF"   # ReRun's own
+    for mode, orig in (("dark", od), ("light", ol)):
+        res = theme.apply(ap.Appearance("classic", mode))
+        table = ios.DARK if mode == "dark" else ios.LIGHT
+        assert res.ios_mode == mode and all(table[k] == v for k, v in orig.items()), mode      # exactly as the engine has it
+        assert not res.tokens.outline and res.tokens.radius == 12                                 # and its flat 12 px cards
+    res = theme.apply(ap.Appearance())                                                           # the default: Plain
+    assert res.appearance.look == "plain" and res.tokens.outline and res.tokens.radius == 6 and theme.is_custom()
+    assert theme.apply_palette("dark") == "dark" and theme.apply_palette("auto") == "auto" and not theme.is_custom()
+    assert theme.apply_palette("ahri") == "dark" and theme.is_ahri() and ios.DARK["bg"] == theme.AHRI["bg"]
+    assert theme.apply_palette("nonsense") == "dark" and theme.current() is None                  # unknown: the default (Plain)
     root, m, inst, app = open_lite()
     try:
-        assert app._theme == "ahri" and ios.C["blue"] == theme.AHRI["blue"]                   # the default for LITE
-        assert app.appearance["values"] == list(theme.THEMES.values()) and app.appearance.get() == "Ahri"
+        assert app._look.look == "plain" and ios.C["blue"] == ap.resolve(app._look, True).palette["blue"]
+        asked = []
+        ios.confirm = lambda *a, **k: asked.append(a[1]) or False
         m.save_config()
         before_config = (root / "config.yaml").read_bytes()
-        asked = []
-        ios.confirm = lambda *a, **k: asked.append(a[1]) or False                             # "Restart now?" -> not now
-        app.appearance.set("Dark")
-        app._set_theme()
-        assert asked and "Dark" in asked[0]
-        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["theme"] == "dark"
-        assert (root / "config.yaml").read_bytes() == before_config                           # config.yaml untouched
-        assert "Theme saved" in app.shown[-1]
+        app.apply_appearance(replace(app._look, look="classic", mode="light"))
+        assert app._look.look == "classic" and ios.C["bg"] == ol["bg"]                            # the window is now Classic Light
+        assert json.loads((root / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))["appearance"]["look"] == "classic"
+        assert (root / "config.yaml").read_bytes() == before_config                               # config.yaml untouched
         assert not app.errors, app.errors
     finally:
-        theme.apply_palette("ahri")
+        theme.apply(ap.Appearance("ahri"))
         close(app, root)
 
 

@@ -11,18 +11,8 @@ from rerun.ios import px
 from . import MAIN_SCRIPT, palaces, readiness
 from .theme import Notice, Tip
 
-SHORTCUTS = (
-    ("Ctrl+1 ... Ctrl+4", "Auto Crest, History, Templates, Settings"),
-    ("Ctrl+Tab / Ctrl+Shift+Tab", "Next / previous tab"),
-    ("Ctrl+,", "Settings"),
-    ("Ctrl+Enter", "Start Crest on the selected emulator (or stop, when it is running)"),
-    ("Ctrl+.", "Stop everything"),
-    ("Ctrl+T", "Keep the window on top (Pin)"),
-    ("F1", "This list"),
-    ("F11", "Pause or resume everything (works in the game too)"),
-    ("F12", "Stop everything (works in the game too)"),
-)
 TAB_NAMES = ("Auto Crest", "History", "Templates", "Settings")
+TAB_ACTIONS = ("tab_crest", "tab_history", "tab_templates", "tab_settings")
 FIX_BUTTON = {"emulator": "Show", "templates": "Open Templates", "settings": "Crest Settings", "palaces": "Palace Selector"}
 
 
@@ -33,20 +23,12 @@ class StatusMixin:
         nb = self.nb
         for i, name in enumerate(TAB_NAMES[: nb.count()]):
             for w in nb._tabs[i] + (nb._badges[i],):
-                Tip(w, f"{name}   Ctrl+{i + 1}")
+                Tip(w, lambda n=name, a=TAB_ACTIONS[i]: f"{n}   {self._key_hint(a)}")
         nb.chip.bind("<Button-1>", lambda e: self._chip_clicked())
         Tip(nb.chip, lambda: self._chip_tip)
         nb.pin.bind("<Button-1>", lambda e: self._toggle_pin())
-        Tip(nb.pin, "Keep this window above other windows   Ctrl+T")
+        Tip(nb.pin, lambda: f"Keep this window above other windows   {self._key_hint('pin')}")
         self._chip_tip = "Click to open Auto Crest"
-        for n in range(1, 5):
-            self.bind_all(f"<Control-Key-{n}>", lambda e, n=n: self._go_tab(n - 1))
-        self.bind_all("<Control-comma>", lambda e: self._go_tab(self._tab_settings))
-        self.bind_all("<Control-Tab>", lambda e: self._cycle_tab(1))
-        self.bind_all("<Control-Shift-Tab>", lambda e: self._cycle_tab(-1))
-        self.bind_all("<Control-ISO_Left_Tab>", lambda e: self._cycle_tab(-1))
-        self.bind_all("<Control-t>", lambda e: self._toggle_pin())
-        self.bind_all("<F1>", lambda e: self.show_shortcuts())
         self._extend_general()
         self._problems: list[readiness.Problem] = []
         self._status_sig = None
@@ -61,9 +43,10 @@ class StatusMixin:
         self.nb.select((self.nb.index() + d) % self.nb.count())
         return "break"
 
-    def show_shortcuts(self):
-        width = max(len(k) for k, _ in SHORTCUTS)
-        ios.alert(self, "\n".join(f"{k.ljust(width)}   {v}" for k, v in SHORTCUTS), "Keyboard shortcuts")
+    def _key_hint(self, action: str) -> str:
+        """The key for `action` as the user set it, for a tooltip ('' when none)."""
+        sc = getattr(self, "_shortcuts", None)
+        return sc.get(action) if sc is not None else ""
 
     # ================================================================ pin on top
     def _toggle_pin(self):
@@ -98,7 +81,6 @@ class StatusMixin:
                    "Open", self._open_palace_file, kind="tinted", small=True).pack()
         ios.Button(g.row("Keyboard shortcuts", "Switch tabs, pin the window and more."),
                    "Show", self.show_shortcuts, kind="tinted", small=True).pack()
-        self._extend_background(g, w.master)
 
     def _open_palace_file(self):
         f = self.m.root / palaces.LIST_FILE

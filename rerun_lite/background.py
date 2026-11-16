@@ -37,7 +37,7 @@ import numpy as np
 from PIL import Image, ImageTk
 
 from rerun import errlog, ios
-from rerun.ios import C, px
+from rerun.ios import C
 
 from . import palettes, theme, upscale
 
@@ -45,8 +45,7 @@ VIDEO_TYPES = (".mp4", ".webm", ".mkv", ".avi", ".mov", ".gif")
 DIMS = {"Light": 0.70, "Medium": 0.50, "Strong": 0.36}            # how much of the video is kept (the rest is the theme colour)
 SCRIMS = {"Off": 0.0, "Soft": 0.55, "Strong": 0.80}                # how far the video is pulled to the theme colour behind controls
 SPEEDS = {"Smooth (30 fps)": 30, "Normal (20 fps)": 20, "Light on the PC (12 fps)": 12}
-DEFAULTS = {"bg_on": True, "bg_dim": "Medium", "bg_fps": 20, "bg_pause_running": False, "bg_path": "",
-            "bg_scrim": "Soft", "bg_upscale": True}
+DEFAULTS = {"bg_dim": "Medium", "bg_fps": 20, "bg_pause_running": False, "bg_scrim": "Soft", "bg_upscale": True}
 MAX_RECTS = 400
 
 
@@ -54,9 +53,11 @@ def app_dir() -> Path:
     return Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
 
 
-def builtin_video(root: Path, key: str) -> Path | None:
-    look = palettes.LOOKS.get(key) or palettes.LOOKS[palettes.DEFAULT]
-    rel = Path("assets") / look.video
+def asset_video(root: Path, filename: str) -> Path | None:
+    """A built-in video by file name: next to the app (or the project), else inside the exe."""
+    if not filename:
+        return None
+    rel = Path("assets") / filename
     for base in (Path(root), app_dir()):
         if (base / rel).is_file():
             return base / rel
@@ -66,21 +67,37 @@ def builtin_video(root: Path, key: str) -> Path | None:
     return None
 
 
+def pick_video(root: Path, res) -> Path | None:
+    """The file that plays for the open appearance `res` (appearance.Resolved), or None (no video, or none found).
+
+    Background "Your own video" -> the file chosen in Settings. Otherwise the look's (or the chosen theme's) own
+    animation; for Ahri's, a video dropped into the `background` folder takes its place (the first one found)."""
+    a = res.appearance
+    if a.background == "custom":
+        p = Path(a.custom_video) if a.custom_video else None
+        return p if p is not None and p.is_file() else None
+    if not res.video:
+        return None
+    if res.video == palettes.LOOKS["ahri"].video:
+        folder = Path(root) / "background"
+        if folder.is_dir():
+            for p in sorted(folder.iterdir()):
+                if p.suffix.lower() in VIDEO_TYPES and p.is_file():
+                    return p
+    return asset_video(root, res.video)
+
+
 def find_video(root: Path, chosen: str = "", key: str = "ahri") -> Path | None:
-    """Which file plays for theme `key`: a video dropped in background/ (Ahri), else the one chosen in Settings for
-    this theme, else the theme's own animation."""
-    folder = Path(root) / "background"
-    if key == "ahri" and folder.is_dir():
-        for p in sorted(folder.iterdir()):
-            if p.suffix.lower() in VIDEO_TYPES and p.is_file():
-                return p
-    if chosen and Path(chosen).is_file():
-        return Path(chosen)
-    return builtin_video(root, key)
+    """(compatibility) the video for look `key`, or the file `chosen` when it exists."""
+    from . import appearance
+    a = appearance.Appearance(key if key in appearance.LOOKS else "ahri", background="custom" if chosen else "auto",
+                              custom_video=chosen)
+    p = pick_video(root, appearance.resolve(a))
+    return p if p is not None or not chosen else pick_video(root, appearance.resolve(appearance.Appearance(a.look)))
 
 
 def chosen_path(settings: dict, key: str) -> str:
-    return str(settings.get(f"bg_path_{key}") or (settings.get("bg_path") if key == "ahri" else "") or "")
+    return str(settings.get(f"bg_path_{key}") or "")
 
 
 def cover(frame: np.ndarray, w: int, h: int) -> np.ndarray:
@@ -204,11 +221,16 @@ class Backdrop:
     def veil(self) -> str:
         return C["bg"]
 
+    def wanted(self) -> bool:
+        """A video is wanted here: not in Classic (ReRun's own look), and not when the background is Off."""
+        cur = theme.CURRENT
+        return cur is not None and theme.is_custom() and cur.appearance.background != "off"
+
     def start(self) -> bool:
         self.key = theme.ACTIVE
-        if self.active or not theme.is_custom() or not self.s.get("bg_on", True):
+        if self.active or not self.wanted():
             return False
-        self.path = find_video(self.root, chosen_path(self.s, self.key), self.key)
+        self.path = pick_video(self.root, theme.CURRENT)
         if self.path is None:
             return False
         self._cancel = threading.Event()
@@ -466,13 +488,11 @@ class Backdrop:
             pass
 
 
-# ================================================================== settings (Settings > General > Background)
+# ================================================================== the settings the video keeps (Appearance > Background)
 class BackgroundMixin:
     def _bg_settings(self) -> dict:
         saved = self._ui_state()
-        out = {k: saved.get(k, v) for k, v in DEFAULTS.items()}
-        out.update({k: v for k, v in saved.items() if k.startswith("bg_path_")})
-        return out
+        return {k: saved.get(k, v) for k, v in DEFAULTS.items()}
 
     def _bg_save(self, **changes):
         try:
@@ -485,13 +505,17 @@ class BackgroundMixin:
     def _build_backdrop(self):
         self.backdrop = Backdrop(self, self.m.root, self._bg_settings(), on_status=self._bg_refresh_label)
         self.after(200, self._bg_start)
-        self.bind("<Destroy>", lambda e: self.backdrop.stop() if e.widget is self else None, add="+")
+        if not getattr(self, "_bg_destroy_bound", False):
+            self._bg_destroy_bound = True
+            self.bind("<Destroy>", lambda e: self.backdrop.stop() if e.widget is self else None, add="+")
 
     def _bg_start(self):
-        self.backdrop.start()
-        self._bg_refresh_label()
+        if getattr(self, "backdrop", None) is not None:
+            self.backdrop.start()
+            self._bg_refresh_label()
 
     def _bg_changed(self, **changes):
+        """A video setting (dimming, scrim, smoothness, enlarging, pause) changed: keep it and tell the player."""
         self._bg_save(**changes)
         self.backdrop.s.update(changes)
         pl = self.backdrop.player
@@ -502,70 +526,24 @@ class BackgroundMixin:
                 pl.dim = DIMS.get(changes["bg_dim"], 0.50)
             if "bg_scrim" in changes:
                 pl.scrim = SCRIMS.get(changes["bg_scrim"], 0.55)
-        if {"bg_on", "bg_upscale"} & set(changes) or any(k.startswith("bg_path") for k in changes):
+        if "bg_upscale" in changes:
             self.backdrop.restart()
         self._bg_refresh_label()
 
-    def _bg_choose(self):
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(title="Choose a background video",
-                                          filetypes=[("Video", "*.mp4 *.webm *.mkv *.avi *.mov *.gif"), ("All files", "*.*")])
-        if path:
-            self._bg_changed(**{f"bg_path_{theme.ACTIVE}": path})
-
-    def _bg_builtin(self):
-        self._bg_changed(**{f"bg_path_{theme.ACTIVE}": "", "bg_path": ""})
-
     def _bg_refresh_label(self):
-        bd = self.backdrop
-        p = bd.path if bd.active else find_video(self.m.root, chosen_path(bd.s, theme.ACTIVE), theme.ACTIVE)
+        bd = getattr(self, "backdrop", None)
+        label = getattr(self, "_bg_label", None)
+        if label is None or bd is None:
+            return
+        cur = theme.CURRENT
         if bd.active:
-            text = ("Playing: " + (p.name if p else "no video found"))[:38]
-            if bd.status:
-                text = bd.status
-        elif not bd.s.get("bg_on", True):
+            text = bd.status or ("Playing: " + (bd.path.name if bd.path else "?"))[:38]
+        elif cur is None or not bd.wanted():
             text = "Off"
-        elif not theme.is_custom():
-            text = "Only in the LITE themes"
         else:
             text = "No video found"
-        if getattr(self, "_bg_label", None) is not None:
-            self._bg_label.configure(text=text)
+        try:
+            label.configure(text=text)
+        except tk.TclError:
+            self._bg_label = None
 
-    def _extend_background(self, anchor_group, wrap):
-        """The "Background" group, placed after the "Window & files" group."""
-        s = self.backdrop.s
-        g = ios.Group(wrap, header="Background",
-                      footer="Each theme has its own animated background. For Ahri, drop a video into the 'background' folder "
-                             "next to ReRun LITE (the first one plays) or pick one here. A small video is enlarged and "
-                             "cleaned up once (a few seconds, in the background), then kept. Behind buttons and text the "
-                             "video is softened so they stay sharp.")
-        g.pack(fill="x", pady=(0, px(24)), after=anchor_group)
-        on = tk.BooleanVar(value=bool(s.get("bg_on", True)))
-        ios.Switch(g.row("Animated background", "Plays a looping video behind the window."), on,
-                   command=lambda: self._bg_changed(bg_on=bool(on.get()))).pack()
-        dim = ios.Select(g.row("Dimming", "Darker is easier to read."), values=list(DIMS), accent=True,
-                         command=lambda: self._bg_changed(bg_dim=dim.get()))
-        dim.set(str(s.get("bg_dim", "Medium")))
-        dim.pack()
-        scrim = ios.Select(g.row("Behind buttons and text", "Softens the video where controls sit, so they stay crisp."),
-                           values=list(SCRIMS), accent=True, command=lambda: self._bg_changed(bg_scrim=scrim.get()))
-        scrim.set(str(s.get("bg_scrim", "Soft")))
-        scrim.pack()
-        names = {v: k for k, v in SPEEDS.items()}
-        spd = ios.Select(g.row("Smoothness", "Lower uses less of your PC."), values=list(SPEEDS), accent=True,
-                         command=lambda: self._bg_changed(bg_fps=SPEEDS[spd.get()]))
-        spd.set(names.get(int(s.get("bg_fps", 20)), "Normal (20 fps)"))
-        spd.pack()
-        up = tk.BooleanVar(value=bool(s.get("bg_upscale", True)))
-        ios.Switch(g.row("Enlarge small videos", "Cleans up and enlarges a small video once (e.g. a GIF) so it stays sharp on a big window."),
-                   up, command=lambda: self._bg_changed(bg_upscale=bool(up.get()))).pack()
-        pause = tk.BooleanVar(value=bool(s.get("bg_pause_running")))
-        ios.Switch(g.row("Pause while Crest is running", "Frees the PC for Crest during long runs."), pause,
-                   command=lambda: self._bg_changed(bg_pause_running=bool(pause.get()))).pack()
-        row = g.row("Video", "")
-        self._bg_label = tk.Label(row, text="", bg=C["card"], fg=C["secondary"], font=ios.F["footnote"])
-        self._bg_label.pack(side="left", padx=(0, px(10)))
-        ios.Button(row, "Choose…", self._bg_choose, kind="tinted", small=True).pack(side="left")
-        ios.Button(row, "Built-in", self._bg_builtin, kind="plain", small=True).pack(side="left", padx=(px(6), 0))
-        self._bg_refresh_label()

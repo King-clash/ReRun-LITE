@@ -1,11 +1,11 @@
 # ReRun LITE
 
-ReRun LITE (version 1.0.0) is a small app for Grand Summoners on BlueStacks. It does one job, and does it with
+ReRun LITE (version 1.1.0) is a small app for Grand Summoners on BlueStacks. It does one job, and does it with
 a calm, good-looking window: **Auto Crest**. It farms a Crest Palace on Auto-Loop, scraps the crests you do not
 want, and stops (and tells you on Discord) when a wanted one drops. A daily palace selector can pick which palace
 to farm for you.
 
-This is its own project, with its own version number (1.0.0), history, releases and update address. It is not a
+This is its own project, with its own version number (1.1.0), history, releases and update address. It is not a
 fork of ReRun and nothing here changes or depends on the ReRun repository. (The code that does the farming was
 copied from ReRun 1.2.1 when this repository was created; see "Where the code comes from".)
 
@@ -24,29 +24,32 @@ account limits, suspension or a permanent ban. The warning is on the Auto Crest 
 Also included: the key sign-in, F12 (stop everything) and F11 (pause/resume), the tray icon, 24/7 mode, Dry Run,
 Discord alerts with screenshots and the status board, the daily summary.
 
-## Themes
+## Appearance
 
-Settings > General > **Theme** lists nine choices. Six are LITE themes, each with its own colours and its own looping
-video behind the window. Three are ReRun's own: **Dark** and **Light** (its black and white themes, exactly as they
-were) and **Automatic** (follows Windows).
+Settings > **Appearance** changes everything at once, with no restart. The choice is saved in `data/lite/ui.json`.
 
-| Theme | Look | Background |
-|---|---|---|
-| **Ahri** (default) | Indigo night, blossom pink, spirit cyan | Drifting petals, a moon, rising wisps; or your own video |
-| **Midnight** | Deep navy, calm blue | Twinkling stars and shooting stars |
-| **Sakura** | A light theme: soft cream, rose | Falling blossom |
-| **Ember** | Charcoal and warm orange | Rising sparks |
-| **Aurora** | Dark teal, mint | Slow green and violet lights |
-| **Neon** | Black, magenta and cyan | A scrolling grid and a low sun |
+- **Look.** **Plain** (the default) is a quiet, flat design: tinted neutrals, hairline cards, one accent colour.
+  **Classic** is ReRun's own black and white, unchanged. The other six bring their own colours and a looping
+  background: **Ahri** (indigo night, blossom pink), **Midnight**, **Sakura** (light), **Ember**, **Aurora**, **Neon**.
+- **Mode:** System (follows Windows), Light or Dark. It applies to Plain and Classic; a themed look has its own.
+- **Accent colour:** Azure, Violet, Rose, Amber, Green, Teal, Coral, Slate, or any colour from the picker. It colours the
+  main buttons, selection, toggles, focus and links, on any look. Text on it switches between white and dark so it
+  always reads, and a too-pale or too-dark pick is nudged until it has enough contrast.
+- **Contrast** (Standard, High) and **Density** (Comfortable, Compact: spacing about 12% tighter).
+- **Background:** each themed look has its own video; Plain has none. Choose Off, any theme's video, or your own file.
+- All colours come from one palette generated in OKLCH (`rerun_lite/colors.py`, `appearance.py`), so there are no
+  colours scattered through the screens.
+
+### Background video (themed looks)
 
 - **A looping video plays behind the whole window** (the LITE themes only). It shows through the gaps between cards and
   behind the text; cards, buttons and the live view stay solid. Clicking the video does nothing, so nothing ever covers
   the window. It scales to any size, including maximised.
 - **Buttons and text stay crisp.** Text and rounded buttons drawn straight onto a video come out ragged, so the video is
   softened in a patch behind every label and button, and the rounded corners are drawn without the dark dots the
-  widget kit's own filter leaves. (Settings > General > Background > *Behind buttons and text*: Off, Soft, Strong.)
+  widget kit's own filter leaves. (Settings > Appearance > Background > *Behind buttons and text*: Off, Soft, Strong.)
 - **Your own video (Ahri):** drop a file (mp4, webm, mkv, avi, mov or gif) into the `background` folder next to ReRun
-  LITE and restart it. The first one in that folder plays. Or pick one for any theme in Settings > General > Background.
+  LITE and restart it. The first one in that folder plays. Or pick one for any theme in Settings > Appearance > Background.
 - **Small videos are enlarged once.** A video under 1280 px wide (a GIF, say) is cleaned up (the GIF's dithering is
   smoothed), enlarged to 1080p with Lanczos resampling and lightly sharpened, in the background (a few seconds, all CPU
   cores), and kept in `data/lite/cache/`. The original plays until it is ready and is never changed. This makes a small
@@ -54,9 +57,15 @@ were) and **Automatic** (follows Windows).
 - Settings > General > **Background:** on/off, dimming (Light, Medium, Strong), behind buttons and text, smoothness
   (12, 20 or 30 frames a second), enlarge small videos, pause while Crest is running, and the video file. The video
   pauses by itself while the window is minimised.
-- Changing the theme asks to restart ReRun LITE (the choice is kept in `data/lite/ui.json`, not in `config.yaml`).
-- The built-in videos are original animations drawn by `tools/make_background.py`. Your own videos are yours: the
-  `background` folder is not part of the repository.
+- The five other themes' backgrounds, and Ahri's built-in one, are original animations drawn by
+  `tools/make_background.py`. Ahri's default background is the "Star Guardian" GIF in `background/`; drop another video
+  in there and the first one found plays instead.
+- **The pictures stay attached to the app.** The exe carries a copy of the background videos, the 18 palace pictures
+  (`images/`) and the palace list (`palaces.yaml`) inside itself, and on every start it puts back any that are missing
+  from its folder (it never replaces a file that is there). So a new folder, a moved copy or a deleted file does not
+  lose them. A personal build (`py build_lite.py`) also carries your palace schedule; the public release does not.
+- **Whose they are:** the palace banners, the GIF and the game screenshots are other people's artwork, included so the
+  app works out of the box. See [CREDITS.md](CREDITS.md); if you own one and want it removed, open an issue.
 
 ## Everyday conveniences
 
@@ -70,8 +79,14 @@ were) and **Automatic** (follows Windows).
   pictures, no palace chosen) with a button that goes straight to the fix. Nothing is sent to the emulator to
   check this.
 - **Today's palace** is shown under the warning on Auto Crest when the selector is on.
-- **Keyboard:** Ctrl+1 to Ctrl+4 switch tabs, Ctrl+Tab / Ctrl+Shift+Tab step through them, Ctrl+, opens Settings,
-  F1 lists them all. Hovering a tab shows its shortcut.
+- **Command palette (Ctrl+K):** type a few letters and press Enter: go to a tab or a Settings page, start or stop
+  Crest, change the look, mode, accent or density, copy a status summary.
+- **Keyboard shortcuts you can change:** Settings > Keyboard shortcuts. Click a key, press the new combination (Esc
+  cancels, Backspace removes it); a key already in use is refused. Defaults: Ctrl+1 to Ctrl+4 tabs, Ctrl+Tab /
+  Ctrl+Shift+Tab step through them, Ctrl+, Settings, Ctrl+D dry run, Ctrl+Shift+C copy status, F1 lists them all.
+- **Right-click menus** on emulators (start, dry run, pause, stop, copy address, edit, remove), the log, History and
+  templates. Removing an emulator shows an **Undo** bar for a few seconds.
+- **Templates:** a search box and a "Missing only" switch.
 - **Pin on top** (Pin button, Ctrl+T, or Settings > General): keeps the window above the game while you watch.
 - **Sound on alerts** (off by default): a short beep when Crest sends an alert.
 - **Remembered:** window size and position, the open tab, the open Settings entry, the pin and the emulator you
@@ -128,7 +143,7 @@ the first time it starts (the ReRun folder is not changed). LITE keeps its own s
 ## Updates
 
 LITE checks its own update address, `https://king-clash.github.io/ReRun-LITE/lite/`, for a signed manifest, and
-compares it with LITE's own version (1.0.0). Until a LITE update has been published there, **Settings > General >
+compares it with LITE's own version (1.1.0). Until a LITE update has been published there, **Settings > General >
 Check Now** says "No ReRun LITE updates have been published yet." A copy run from source only reports a new
 version; the built exe also installs it. `py tools/publish_lite_update.py --exe release/RerunLite/RerunLite.exe`
 writes the update site files (`updates_site/lite/`) for the `gh-pages` branch.

@@ -99,9 +99,9 @@ class Splash:
     Toplevel `master` makes it a Toplevel of that."""
 
     def __init__(self, master: tk.Misc | None, root: str | Path | None, phase: str, title: str = "ReRun LITE",
-                 first: str = "Starting…", theme_key: str = palettes.DEFAULT):
+                 first: str = "Starting…", colors: dict | None = None):
         _dpi_aware()
-        self.c = palettes.splash_colors(theme_key)            # the colours of the chosen theme
+        self.c = colors or palettes.splash_colors(palettes.DEFAULT)      # the colours of the chosen look
         self.own = master is None
         self.win = tk.Tk() if self.own else tk.Toplevel(master)
         self.win.withdraw()

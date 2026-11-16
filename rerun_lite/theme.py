@@ -10,38 +10,75 @@ import tkinter as tk
 from rerun import ios
 from rerun.ios import C, F, px
 
-from . import palettes
+from . import appearance, palettes
 
-# ---- the themes. "Dark" and "Light" are ReRun's own black and white iOS palettes, exactly as they were. Every other
-# theme is a LITE theme of its own, described as data in palettes.py (palette, "LITE" tag colours, background video).
-CLASSIC_DARK = dict(ios.DARK)
+# ---- the look. The colours and sizes come from appearance.py (the model) and palettes.py (the themed looks); this module
+# puts them into the widget kit and patches the few places where the kit hard-codes a colour or a size.
+CLASSIC_DARK = dict(ios.DARK)                   # ReRun's own black and white, kept exactly as the engine has them
 CLASSIC_LIGHT = dict(ios.LIGHT)
-THEMES = palettes.labels()                      # key -> name, in the order the Theme setting lists them
+appearance.CLASSIC["dark"], appearance.CLASSIC["light"] = CLASSIC_DARK, CLASSIC_LIGHT
+THEMES = palettes.labels()                      # (legacy) key -> name
 DEFAULT_THEME = palettes.DEFAULT
-ACTIVE = DEFAULT_THEME
-AHRI = palettes.LOOKS["ahri"].palette           # (kept: the default theme's palette)
-CLASSIC_MARK, CLASSIC_MARK_TEXT = "#E3B15C", "#1B1405"    # the "LITE" tag in Dark and Light: gold
+AHRI = palettes.LOOKS["ahri"].palette
+CLASSIC_MARK, CLASSIC_MARK_TEXT = "#E3B15C", "#1B1405"    # the "LITE" tag in Classic: gold
+CURRENT: appearance.Resolved | None = None
+ACTIVE = appearance.DEFAULT_LOOK                # the open look's key ("plain", "classic", "ahri", ...)
 
 
-def saved_theme(root) -> str:
-    """The theme chosen in Settings > General, kept in data/lite/ui.json (Ahri when nothing is saved)."""
+def saved_appearance(root) -> appearance.Appearance:
+    """The choices saved in data/lite/ui.json (the defaults when there are none; an older file's "theme" is carried over)."""
     import json
     from pathlib import Path
     try:
-        key = json.loads((Path(root) / "data" / "lite" / "ui.json").read_text(encoding="utf-8")).get("theme")
-    except (OSError, ValueError, AttributeError):
-        key = None
-    return key if key in THEMES else DEFAULT_THEME
+        ui = json.loads((Path(root) / "data" / "lite" / "ui.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        ui = {}
+    return appearance.from_ui(ui if isinstance(ui, dict) else {})
+
+
+def saved_theme(root) -> str:
+    """(legacy) the look chosen, as a key."""
+    return saved_appearance(root).look
+
+
+def apply(a: appearance.Appearance) -> appearance.Resolved:
+    """Before ios.init: resolve the choices and put the palette in the kit's tables. ReRun's own two palettes are always
+    put back first, so switching away from a look leaves nothing of it behind. Returns what to hand ios.init."""
+    global CURRENT, ACTIVE
+    res = appearance.resolve(a, appearance.system_dark())
+    CURRENT, ACTIVE = res, res.appearance.look
+    ios.DARK.clear()
+    ios.DARK.update(CLASSIC_DARK)
+    ios.LIGHT.clear()
+    ios.LIGHT.update(CLASSIC_LIGHT)
+    (ios.DARK if res.dark else ios.LIGHT).update(res.palette)
+    return res
+
+
+def apply_palette(key: str = DEFAULT_THEME) -> str:
+    """(legacy, used by the tests) a 1.0.x theme key; returns "dark", "light" or "auto" for ios.init."""
+    res = apply(appearance.LEGACY_THEMES.get(key, appearance.Appearance()))
+    return "auto" if key == "auto" else res.ios_mode
+
+
+def apply_density() -> None:
+    """After ios.init: the interface density scales every spacing and control size (text stays the size it is)."""
+    if CURRENT is not None:
+        ios.SCALE *= appearance.DENSITY_SCALE[CURRENT.appearance.density]
+
+
+def tokens() -> appearance.Tokens:
+    return CURRENT.tokens if CURRENT is not None else appearance.TOKENS["plain"]
 
 
 def current() -> palettes.Look | None:
-    """The open LITE theme, or None for ReRun's own Dark / Light / Automatic."""
+    """The open themed look (Ahri, Midnight, ...), or None for Plain and Classic."""
     return palettes.LOOKS.get(ACTIVE)
 
 
 def is_custom() -> bool:
-    """A LITE theme (outlined cards, a video background); False for Dark, Light and Automatic."""
-    return ACTIVE in palettes.LOOKS
+    """LITE's own styling (hairline cards, a video background): every look except Classic."""
+    return ACTIVE != "classic"
 
 
 def is_ahri() -> bool:
@@ -49,36 +86,25 @@ def is_ahri() -> bool:
 
 
 def mark_colors() -> tuple[str, str]:
+    """The "LITE" tag: the look's own colours, the accent in Plain, gold in Classic."""
     look = current()
-    return look.mark if look else (CLASSIC_MARK, CLASSIC_MARK_TEXT)
-
-
-def apply_palette(theme: str = DEFAULT_THEME) -> str:
-    """Before ios.init: put the chosen palette in the kit's tables and return what to hand ios.init
-    ("dark", "light" or "auto"). Dark and Light are always put back exactly as ReRun has them."""
-    global ACTIVE
-    ACTIVE = theme if theme in THEMES else DEFAULT_THEME
-    ios.DARK.clear()
-    ios.DARK.update(CLASSIC_DARK)
-    ios.LIGHT.clear()
-    ios.LIGHT.update(CLASSIC_LIGHT)
-    look = current()
-    if look is None:
-        return ACTIVE
-    (ios.DARK if look.dark else ios.LIGHT).update(look.palette)
-    return "dark" if look.dark else "light"
+    if look:
+        return look.mark
+    if ACTIVE == "classic" or CURRENT is None:
+        return CLASSIC_MARK, CLASSIC_MARK_TEXT
+    return CURRENT.palette["blue"], CURRENT.palette["on_accent"]
 
 
 _applied = False
 
 
 def apply_look() -> None:
-    """After ios.init: outlined cards. Safe to call twice."""
-    global _applied
-    F["page"] = (F["large"][0], 18, "bold")      # ios.init rebuilds F for every window, so set it every time
-    if _applied:
+    """After ios.init: the patches to the widget kit. Safe to call every time (the patches are made once; they read the
+    open look when they run)."""
+    F["page"] = (F["large"][0], 16, "bold")      # ios.init rebuilds F for every window, so set it every time
+    if globals()["_applied"]:
         return
-    _applied = True
+    globals()["_applied"] = True
 
     original_corners = ios._corners
 
@@ -101,24 +127,63 @@ def apply_look() -> None:
         return ios._cache[key]
 
     ios._corners = corners
+
+    # Cards: the corner radius comes from the tokens (6 px in Plain, not the kit's 12), and a 1 px hairline replaces the
+    # kit's flat fill so a card reads as a surface without a shadow.
+    original_card_init = ios.Card.__init__
     original_layout = ios.Card._layout
 
+    def card_init(self, parent, pad: int = 4, radius: int = 12, stretch: bool = False, color: str | None = None):
+        if radius == 12 and is_custom():                       # the kit's default: use the look's radius instead
+            radius = tokens().radius
+        original_card_init(self, parent, pad, radius, stretch, color)
+
     def layout(self, e):
-        if not is_custom():                                # Dark and Light keep ReRun's own flat cards
+        if not (is_custom() and tokens().outline):
             return original_layout(self, e)
         self._cv.delete("all")
-        border = C["sep"]
+        edge = tokens().edge
+        border = (ios.mix(C["sep"], C["blue"], 0.55) if edge == "accent" else
+                  ios.mix(C["sep"], C["label"], 0.16) if edge == "strong" else C["sep"])
         ios.rounded_rect(self._cv, 0, 0, e.width, e.height, self._r, border, self._bg)
         ios.rounded_rect(self._cv, 1, 1, e.width - 1, e.height - 1, max(self._r - 1, 2), self.color, border)
 
+    ios.Card.__init__ = card_init
     ios.Card._layout = layout
 
+    # The kit draws filled buttons with white text and toggles in green. Both follow the accent here: button text is
+    # whatever reads on the accent (appearance.py picks it), and a switch that is on is the accent colour.
+    original_colors = ios.Button._colors
+
+    def button_colors(self):
+        fill, fg = original_colors(self)
+        if not self._enabled and is_custom():                  # clearly off: flat neutral, quiet text, no tint
+            bg = self._bg
+            return (None if self._kind == "plain" else ios.mix(bg, C["label"], 0.07)), ios.mix(C["label"], bg, 0.62)
+        if self._kind == "filled" and self._color == C["blue"] and "on_accent" in C and fg == "#FFFFFF":
+            fg = C["on_accent"]
+        return fill, fg
+    ios.Button._colors = button_colors
+
+    original_frame = ios.Switch._frame
+
+    def switch_frame(self, t):
+        green, fill = C["green"], C["fill"]
+        C["green"] = C["blue"]
+        if is_custom():                                        # an off switch has a track you can see
+            C["fill"] = ios.mix(self._bg, C["label"], 0.30 if ios.DARK_MODE else 0.26)
+        try:
+            return original_frame(self, t)
+        finally:
+            C["green"], C["fill"] = green, fill
+    ios.Switch._frame = switch_frame
+
     # LITE lists a single script, and the original pages ask a Select for its second entry (current(1)): clamp.
-    def current(self, i: int):
+    def select_current(self, i: int):
         if self._values:
             self.var.set(self._values[max(0, min(i, len(self._values) - 1))])
 
-    ios.Select.current = current
+    ios.Select.current = select_current
 
     # The tab bar already names the page, so the page title is smaller and leaves the room to the content.
     def page_header(parent, title: str) -> tk.Frame:
@@ -167,7 +232,7 @@ class LiteTabs(ios.TabView):
         self.chip = tk.Label(right, text="", bg=bar, fg=C["secondary"], font=F["footnote_semi"], cursor="hand2",
                              padx=px(10), pady=px(3))
         self.chip.pack(side="right")
-        self.action = tk.Label(right, text="", bg=C["blue"], fg="#FFFFFF", font=F["footnote_semi"], cursor="hand2",
+        self.action = tk.Label(right, text="", bg=C["blue"], fg=C.get("on_accent", "#FFFFFF"), font=F["footnote_semi"], cursor="hand2",
                                padx=px(14), pady=px(4))
         self.action.pack(side="right", padx=(0, px(10)))
         self._badges: list[tk.Label] = []
@@ -230,7 +295,7 @@ class LiteTabs(ios.TabView):
 
     def set_action(self, text: str, kind: str = "blue") -> None:
         """The one-click Start / Stop button at the right of the top bar."""
-        self.action.configure(text=text, bg=C[kind])
+        self.action.configure(text=text, bg=C[kind], fg=C.get("on_accent", "#FFFFFF") if kind == "blue" else "#FFFFFF")
 
     def set_pin(self, on: bool) -> None:
         self.pin.configure(text=("Pinned" if on else "Pin"), fg=C["blue"] if on else C["tab_off"],

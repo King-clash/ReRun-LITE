@@ -9,7 +9,7 @@ import tkinter as tk
 from rerun import errlog, ios
 from rerun.ios import C, F, px
 
-from . import palaces, restart, theme
+from . import palaces
 from .theme import Tip
 
 
@@ -18,45 +18,33 @@ class ExtrasMixin:
     def _build_extras(self):
         nb = self.nb
         nb.action.bind("<Button-1>", lambda e: self._toggle_run())
-        Tip(nb.action, lambda: "Stop everything   Ctrl+." if self._busy_any()
-            else "Start Crest on the selected emulator   Ctrl+Enter")
-        self.bind_all("<Control-Return>", lambda e: self._toggle_run())
-        self.bind_all("<Control-period>", lambda e: self._stop_run())
+        Tip(nb.action, lambda: f"Stop everything   {self._key_hint('stop')}" if self._busy_any()
+            else f"Start Crest on the selected emulator   {self._key_hint('start')}")
         self._sound = bool(self._ui_state().get("sound_alerts", False))
         self._sound_var = tk.BooleanVar(value=self._sound)
-        self.m.listeners.append(self._maybe_sound)
+        if self._maybe_sound not in self.m.listeners:          # the window can be built again (a new look): listen once
+            self.m.listeners.append(self._maybe_sound)
         self._saved_emulator = None
         self._last_today = None
         self._refresh_action()
-        self._build_theme_select()
+        self._tidy_general()
 
-    # ================================================================ theme (Settings > General > Theme)
-    def _build_theme_select(self):
-        """The original Theme row lists Automatic / Light / Dark and saves to config.yaml. LITE lists Ahri, Dark, Light and
-        Automatic and keeps its choice in its own file (data/lite/ui.json), so a full ReRun sharing the folder is unaffected."""
-        self.appearance["values"] = list(theme.THEMES.values())
-        self.appearance.set(theme.THEMES.get(self._theme, theme.THEMES[theme.DEFAULT_THEME]))
-        self.appearance._cmd = self._set_theme
-
-    def _set_theme(self):
-        key = next((k for k, v in theme.THEMES.items() if v == self.appearance.get()), theme.DEFAULT_THEME)
-        if key == self._theme:
-            return
-        self._bg_save(theme=key)
-        self._theme = key
-        if ios.confirm(self, f"ReRun LITE restarts to change the theme to {theme.THEMES[key]}. Restart now?", "Theme",
-                       ok="Restart"):
-            self._restart()
-        else:
-            self.flash("Theme saved. It applies the next time ReRun LITE opens.", "ok")
-
-    def _restart(self):
-        try:
-            restart.relaunch(self.m.root)
-        except OSError as e:
-            self.flash(f"Could not restart: {e}", "warn")
-            return
-        self.quit_app()
+    # ================================================================ Settings > General
+    def _tidy_general(self):
+        """The original General page opens with a Theme row (Automatic / Light / Dark, saved in config.yaml). LITE has a
+        whole Appearance page, so that row is hidden and the explanation under it says where to go."""
+        row = self.appearance.master.master
+        body = row.master
+        kids = body.winfo_children()
+        i = kids.index(row)
+        row.pack_forget()
+        if i + 1 < len(kids):                       # the divider under it
+            kids[i + 1].pack_forget()
+        group = body.master
+        while group is not None and not isinstance(group, ios.Group):
+            group = group.master
+        if group is not None and group.footer is not None:
+            group.footer.configure(text="Colours, accent, density and the background are in Settings > Appearance.")
 
     def _make_today_line(self, page, after):
         """One quiet line under the warning: which palace the selector picked for today."""

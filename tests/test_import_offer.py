@@ -123,17 +123,25 @@ def test_ago_reads_naturally():
     assert import_offer.ago(0) == "unknown"
 
 
-def test_the_saved_theme_is_read_before_the_app_exists():
+def test_the_saved_appearance_is_read_before_the_app_exists():
     root = Path(tempfile.mkdtemp(prefix="rl_th_"))
     try:
-        assert theme.saved_theme(root) == "ahri"                                         # nothing saved: the default
+        assert theme.saved_appearance(root).look == "plain"                                  # nothing saved: the default look
         (root / "data" / "lite").mkdir(parents=True)
-        (root / "data" / "lite" / "ui.json").write_text(json.dumps({"theme": "light"}), encoding="utf-8")
-        assert theme.saved_theme(root) == "light"
-        (root / "data" / "lite" / "ui.json").write_text(json.dumps({"theme": "nonsense"}), encoding="utf-8")
-        assert theme.saved_theme(root) == "ahri"
-        (root / "data" / "lite" / "ui.json").write_text("not json", encoding="utf-8")
-        assert theme.saved_theme(root) == "ahri"
+        ui = root / "data" / "lite" / "ui.json"
+        ui.write_text(json.dumps({"appearance": {"look": "midnight", "accent": "#7C5CFC", "density": "compact"}}), encoding="utf-8")
+        a = theme.saved_appearance(root)
+        assert (a.look, a.accent, a.density) == ("midnight", "#7C5CFC", "compact")
+        ui.write_text(json.dumps({"theme": "light"}), encoding="utf-8")                      # a 1.0.x file: carried over
+        a = theme.saved_appearance(root)
+        assert (a.look, a.mode) == ("classic", "light")
+        ui.write_text(json.dumps({"theme": "ahri", "bg_on": False}), encoding="utf-8")
+        assert theme.saved_appearance(root).look == "ahri" and theme.saved_appearance(root).background == "off"
+        ui.write_text(json.dumps({"appearance": {"look": "nonsense", "accent": "red"}}), encoding="utf-8")
+        a = theme.saved_appearance(root)
+        assert a.look == "plain" and a.accent == ""                                           # unknown values fall back
+        ui.write_text("not json", encoding="utf-8")
+        assert theme.saved_appearance(root).look == "plain"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

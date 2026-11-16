@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 import build as full_build  # noqa: E402 - reused: bundle_tesseract, clean_config, check_release
+from rerun_lite import seed  # noqa: E402 - your own files, carried inside a personal build
 
 EXE = "RerunLite"
 DIST = ROOT / "dist" / EXE
@@ -87,6 +88,9 @@ def write_splash(path: Path) -> Path:
     return path
 
 
+INCLUDE_SCHEDULE = True    # a personal build also carries your palace schedule; the public release (--release) does not
+
+
 def build_exe(dist: Path) -> bool:
     from rerun_lite import __version__
     from rerun_lite.icon import write_lite_ico
@@ -94,9 +98,12 @@ def build_exe(dist: Path) -> bool:
     icon = write_lite_ico(work / "rerunlite.ico")
     vfile = write_version_file(work / "version_info.txt", __version__)
     splash = write_splash(work / "splash.png")
+    seeded = seed.stage(ROOT, work / "seed", schedule=INCLUDE_SCHEDULE)   # the pictures and videos, bundled inside the exe
+    INFO["bundled_files"] = len(seeded)
     cmd = [
         sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
         "--name", EXE, "--icon", str(icon), "--version-file", str(vfile), "--noupx",
+        *(["--add-data", f"{work / 'seed'}{SEP}seed"] if seeded else []),   # restored next to the exe on start (rerun_lite/seed.py)
         "--splash", str(splash),                       # shown while the exe unpacks, before Python starts
         "--distpath", str(dist), "--workpath", str(work / "build"),
         "--specpath", str(work),
@@ -135,6 +142,7 @@ def copy_content(dist: Path) -> None:
         shutil.copy2(video, dist / "assets" / video.name)
     (dist / "background").mkdir(exist_ok=True)                              # drop your own background video here
     shutil.copy2(ROOT / "background" / "README.txt", dist / "background" / "README.txt")
+    INFO["files_next_to_exe"] = len(seed.stage(ROOT, dist, schedule=INCLUDE_SCHEDULE))   # videos, palace pictures and list
     INFO["templates"] = len(files)
     INFO["routines"] = 0
 
@@ -172,6 +180,8 @@ def release() -> int:
     """A clean ReRun LITE to give away: the exe, LITE's templates, the readme, a blank config, its own
     Tesseract - and nothing of yours. Checked (build.py's leak check, plus LITE's own folders) before it
     is zipped."""
+    global INCLUDE_SCHEDULE
+    INCLUDE_SCHEDULE = False                            # the public zip leaves out your personal palace schedule
     from rerun_lite import __version__
     out = RELEASE / EXE
     if out.exists():
@@ -213,9 +223,6 @@ def main() -> int:
         return 1
     if (ROOT / "config.yaml").exists():
         shutil.copy2(ROOT / "config.yaml", dist / "config.yaml")
-    for video in (ROOT / "background").glob("*"):                      # your own background video(s) come along in a local
-        if video.is_file() and video.name != "README.txt":             # build (a release zip never carries them)
-            shutil.copy2(video, dist / "background" / video.name)
     print(f"\nBuilt {dist / (EXE + '.exe')}")
     return 0
 

@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from rerun import ios  # noqa: E402
 from rerun_lite import background, palettes, theme, upscale  # noqa: E402
+from rerun_lite.colors import contrast  # noqa: E402
 from tests.test_lite import close, lite_root, manager  # noqa: E402
 
 KEYS = ["bg", "card", "sep", "label", "secondary", "tertiary", "blue", "green", "red", "orange", "gray", "fill", "field",
@@ -44,22 +45,23 @@ def test_every_theme_is_complete_readable_and_has_its_video():
         cap = cv2.VideoCapture(str(ROOT / "assets" / look.video))
         assert cap.isOpened() and int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) >= 200 and int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) >= upscale.ENOUGH_WIDTH
         cap.release()
-        assert background.builtin_video(ROOT, key).name == look.video
+        assert background.asset_video(ROOT, look.video).name == look.video
         colors = palettes.splash_colors(key)                                                # the start-up window has colours too
         assert colors["bg"] == p["bg"] and colors["fill"] == p["blue"]
 
 
-def test_each_theme_loads_into_the_widget_kit_and_dark_light_stay_the_originals():
+def test_each_theme_loads_into_the_widget_kit_and_classic_stays_the_original():
     original_dark, original_light = dict(theme.CLASSIC_DARK), dict(theme.CLASSIC_LIGHT)
     for key, look in palettes.LOOKS.items():
         assert theme.apply_palette(key) == ("dark" if look.dark else "light")
         table = ios.DARK if look.dark else ios.LIGHT
-        assert table["bg"] == look.palette["bg"] and table["blue"] == look.palette["blue"] and theme.current() is look
+        assert table["bg"] == look.palette["bg"] and theme.current() is look
+        assert contrast(table["blue"], table["card"]) >= 3.0, key                            # the accent reads on the panel
         assert theme.is_custom() and theme.mark_colors() == look.mark
-    assert theme.apply_palette("dark") == "dark" and ios.DARK == original_dark and ios.LIGHT == original_light
+    assert theme.apply_palette("dark") == "dark" and all(ios.DARK[k] == v for k, v in original_dark.items())
     assert not theme.is_custom() and theme.current() is None
-    assert theme.apply_palette("light") == "light" and ios.LIGHT == original_light
-    assert theme.apply_palette("midnight") and theme.apply_palette("auto") == "auto" and ios.DARK == original_dark
+    assert theme.apply_palette("light") == "light" and all(ios.LIGHT[k] == v for k, v in original_light.items())
+    assert theme.apply_palette("midnight") and theme.apply_palette("auto") == "auto"
     theme.apply_palette("ahri")
 
 
@@ -153,12 +155,12 @@ def test_every_lite_theme_opens_with_its_colours_and_its_own_background():
     for key, look in palettes.LOOKS.items():
         root, app = open_app(key)
         try:
-            assert app._theme == key and ios.C["bg"] == look.palette["bg"] and ios.C["blue"] == look.palette["blue"], key
+            assert app._look.look == key and ios.C["bg"] == look.palette["bg"], key
+            assert contrast(ios.C["blue"], ios.C["card"]) >= 3.0, key
             assert wait(app, lambda: app.backdrop.active), key
             assert app.backdrop.path.name == look.video                                      # its own animation
             assert str(app.attributes("-transparentcolor")).lower() == look.palette["bg"].lower()
-            assert app.appearance.get() == look.label and app.appearance["values"] == list(theme.THEMES.values())
-            assert "Behind buttons and text" in " ".join(texts(app._set_pages["app"]))
+            assert "Behind buttons and text" in " ".join(texts(app._set_pages["appearance"]))
             assert wait(app, lambda: app.backdrop.player is not None and app.backdrop.player.frame is not None), key
             assert not app.errors, (key, app.errors)
         finally:
