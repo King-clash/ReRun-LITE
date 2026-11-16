@@ -14,6 +14,8 @@ Everything else (walking Home > Exploring > Crest Palace, the quest, the loop, s
 """
 from __future__ import annotations
 
+import time
+
 import cv2
 import numpy as np
 
@@ -74,6 +76,78 @@ class LiteCrest(CrestScript):
         msg = f"Crest: the palace selector can't run today ({choice.day}): {choice.problem} Stopped - no other palace was run."
         self.notify(msg, screenshot=False)
         raise Finished("palace selector: " + choice.problem)
+
+    # A crest that was already waiting in the game when Crest started (it dropped before the script began) shows up on the
+    # Equip Crest screen with no Redeploy bar, so the original scraps it with OK. If that OK does nothing, the original
+    # judges the same crest again and again, for ever. This watches for that: a few tries the original way, then a
+    # looser look for the OK button, then a stop that says what happened and keeps a picture of the screen.
+    STUCK_RELAXED_TRY = 3
+    STUCK_STOP_TRY = 5
+    STUCK_RESET_S = 45
+
+    def confirm_word(self, screen):
+        """Where a 'Confirm' button is, read from the screen text (the game shows it in place of OK when the crest was
+        already waiting before Crest started). (x, y) of the word, or None. Looked for only in the bottom third."""
+        if self.ocr is None:
+            return None
+        words = self.ocr.screen_words(screen, min_conf=35)
+        h = screen.shape[0]
+        best = None
+        for w in words:
+            cy = w.y + w.h // 2
+            if cy < h * 0.62 or w.h > 120:
+                continue
+            if textnav.word_score("confirm", w.text) >= 0.8 and (best is None or cy > best[1]):
+                best = (w.x + w.w // 2, cy)
+        return best
+
+    def tap_confirm(self, screen) -> bool:
+        """Tap the Confirm button, then the scrap confirmation that follows it. True when a Confirm was found."""
+        spot = self.confirm_word(screen)
+        if spot is None:
+            return False
+        self.log(f"Confirm button found - tapping it at {spot}")
+        self.tap(spot[0], spot[1], settle=1.5)
+        ok2 = self.wait_for(["select_crest_ok2"], 6)
+        if ok2:
+            self.tap_match(ok2, settle=1.5)
+        return True
+
+    def scrap(self, screen) -> None:
+        # With neither a Redeploy bar nor the usual OK, the screen is the other kind: a 'Confirm' button.
+        if not self.find("redeploy_button", screen) and not self.find("select_crest_ok", screen) and self.tap_confirm(screen):
+            if self.target_reached():
+                self.finish()
+            return None
+        now = time.monotonic()
+        if now - getattr(self, "_scrap_last", 0.0) > self.STUCK_RESET_S:
+            self._scrap_tries = 0
+        self._scrap_last = now
+        self._scrap_tries = getattr(self, "_scrap_tries", 0) + 1
+        tries = self._scrap_tries
+        if tries < self.STUCK_RELAXED_TRY:
+            return super().scrap(screen)
+        if tries == self.STUCK_RELAXED_TRY:
+            self._stuck_frame = self.save_frame("equip_crest_stuck", screen)
+        saved = getattr(self, "_stuck_frame", None)
+        if tries >= self.STUCK_STOP_TRY:
+            self.notify("Crest: stuck on the Equip Crest screen. The same crest was seen again and again and OK did not scrap it. "
+                        "Stopped so it does not repeat for ever. Scrap or keep it yourself, then press Start."
+                        + (f" A picture of the screen was saved to {saved}." if saved else " See the newest picture in the debug folder."))
+            raise Finished("stuck on the Equip Crest screen")
+        self.log(f"Equip Crest screen did not clear after {tries - 1} tries - looking for OK more loosely"
+                 + (f" (screen saved to {saved})" if saved else ""))
+        m = self.find("select_crest_ok", screen, threshold=0.5)
+        if not m:
+            self.log("No OK button found even loosely")
+            self.tap_confirm(screen)
+            return None
+        self.log(f"OK found (match {getattr(m, 'score', 0):.2f}) - tapping it")
+        self.tap_match(m, settle=1.5)
+        ok2 = self.wait_for(["select_crest_ok2"], 8)
+        if ok2:
+            self.tap_match(ok2, settle=1.5)
+        return None
 
     def handle_quest_list(self, screen):
         """A palace has several quests (Subject in Trance [PRO], [ADV], [INT]...). The original needs a picture of one quest

@@ -156,7 +156,7 @@ def test_lite_runs_the_original_code_not_a_copy():
     assert SCRIPTS["crest"] is LiteCrest and issubclass(LiteCrest, CrestScript) and SCRIPTS["login_mail"] is LoginMailScript
     own_methods = {k for k, v in vars(LiteCrest).items() if callable(v) and not k.startswith("__")}
     assert own_methods == {"selector_choice", "selector_on", "check_nav_templates", "_stop_for", "_selector_root",
-                           "handle_crest_palace_screen", "handle_quest_list"}, own_methods          # Crest itself is the original
+                           "handle_crest_palace_screen", "handle_quest_list", "scrap", "confirm_word", "tap_confirm"}, own_methods          # Crest itself is the original
     for name in ("_record_session", "script_settings", "save_script_settings", "notify", "stop", "pause",
                  "resume", "scheduler_tick", "template_checklist", "missing_templates", "totals", "energy"):
         assert getattr(LiteManager, name) is getattr(Manager, name), name

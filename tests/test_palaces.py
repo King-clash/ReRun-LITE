@@ -248,6 +248,105 @@ def test_quest_list_takes_the_top_quest_when_no_picture_or_name_applies():
         textnav.quest_rows, engine.CrestScript.handle_quest_list = real_rows, real_super
 
 
+def test_a_crest_screen_that_will_not_clear_is_retried_loosely_then_stopped():
+    from types import SimpleNamespace
+
+    from rerun.scripts import crest as engine
+    from rerun.scripts.base import Finished
+    from rerun_lite.crest import LiteCrest
+
+    c = LiteCrest.__new__(LiteCrest)
+    c.events, c.cfg = [], {}
+    c.log, c.notify = (lambda m: c.events.append(("log", m))), (lambda m, **k: c.events.append(("notify", m)))
+    c.save_frame = lambda tag, screen=None: "debug/x.png"
+    c.confirm_word = lambda screen: None
+    c.find = lambda name, screen=None, threshold=None, region=None: SimpleNamespace(score=0.55) if threshold else None
+    c.tap_match = lambda m, settle=0: c.events.append(("tap", m.score))
+    c.wait_for = lambda names, t: None
+    original = engine.CrestScript.scrap
+    engine.CrestScript.scrap = lambda self, screen: self.events.append(("original", 0))
+    try:
+        c.scrap(None)
+        c.scrap(None)
+        assert [e for e in c.events if e[0] == "original"] == [("original", 0)] * 2          # the first tries are the original's
+        c.scrap(None)                                                                          # third: a looser OK, and a saved picture
+        assert ("tap", 0.55) in c.events and any("did not clear" in e[1] for e in c.events if e[0] == "log")
+        c.scrap(None)
+        try:
+            c.scrap(None)                                                                      # fifth: stop and say why
+            raise AssertionError("it should have stopped")
+        except Finished as e:
+            assert "stuck" in str(e)
+        assert any(e[0] == "notify" and "debug/x.png" in e[1] for e in c.events)
+        c._scrap_last -= 100                                                                   # a long quiet spell starts over
+        c.events.clear()
+        c.scrap(None)
+        assert c.events == [("original", 0)]
+    finally:
+        engine.CrestScript.scrap = original
+
+
+def test_a_confirm_button_is_found_by_its_text_and_tapped_when_there_is_no_ok():
+    from types import SimpleNamespace
+
+    import cv2
+
+    from rerun.ocr import OcrUnavailable, get_ocr
+    from rerun.scripts import crest as engine
+    from rerun_lite.crest import LiteCrest
+
+    base = cv2.imread(str(ROOT / "tests" / "fixtures" / "equip_crest_lv3.png"))
+
+    def screen_with(label):                       # the Equip Crest screen with its bottom bar replaced by one orange button
+        im = base.copy()
+        cv2.rectangle(im, (40, 1060), (680, 1150), (20, 20, 20), -1)
+        cv2.rectangle(im, (230, 1062), (490, 1135), (25, 90, 175), -1)
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_DUPLEX, 1.2, 2)
+        org = (360 - tw // 2, 1098 + th // 2)
+        cv2.putText(im, label, org, cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 0, 0), 5, cv2.LINE_AA)
+        cv2.putText(im, label, org, cv2.FONT_HERSHEY_DUPLEX, 1.2, (255, 255, 255), 2, cv2.LINE_AA)
+        return im
+
+    try:
+        reader = get_ocr(None)
+    except OcrUnavailable:
+        reader = None
+    if reader is not None:                        # the real text reader on a picture of the screen
+        class Real(LiteCrest):
+            ocr = reader
+        c = Real.__new__(Real)
+        x, y = c.confirm_word(screen_with("Confirm"))
+        assert abs(x - 360) < 40 and abs(y - 1100) < 30, (x, y)
+        assert c.confirm_word(screen_with("OK")) is None and c.confirm_word(screen_with("Redeploy")) is None
+
+    class Fake(LiteCrest):
+        ocr = SimpleNamespace()
+
+    def make(has_ok):
+        c = Fake.__new__(Fake)
+        c.events, c.cfg = [], {}
+        c.log = c.events.append
+        c.find = lambda name, screen=None, threshold=None, region=None: SimpleNamespace(score=1.0) if (has_ok and name == "select_crest_ok") else None
+        c.confirm_word = lambda screen: (359, 1100)
+        c.target_reached = lambda: False
+        c.tap = lambda x, y, settle=0: c.events.append(("tap", x, y))
+        c.wait_for = lambda names, t: SimpleNamespace(score=1.0)
+        c.tap_match = lambda m, settle=0: c.events.append("tap ok2")
+        return c
+
+    original = engine.CrestScript.scrap
+    engine.CrestScript.scrap = lambda self, screen: self.events.append("original scrap")
+    try:
+        c = make(has_ok=False)                    # no OK, no Redeploy: the Confirm button is tapped, then the confirmation
+        c.scrap(None)
+        assert ("tap", 359, 1100) in c.events and "tap ok2" in c.events and "original scrap" not in c.events
+        c = make(has_ok=True)                     # the usual OK is there: the original code runs untouched
+        c.scrap(None)
+        assert c.events == ["original scrap"]
+    finally:
+        engine.CrestScript.scrap = original
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_") and callable(v)]
     failed = 0

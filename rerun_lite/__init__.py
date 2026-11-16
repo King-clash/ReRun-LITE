@@ -1,6 +1,6 @@
 """ReRun LITE - a separate, smaller app for Auto Crest.
 
-LITE is its own project (version 1.1.1, its own releases and update address). It is a thin shell around the Crest
+LITE is its own project (version 1.1.2, its own releases and update address). It is a thin shell around the Crest
 code and window kit of the `rerun` package that is copied into this repository:
 
   * Auto Crest  = rerun/scripts/crest.py (CrestScript) on the original Dashboard page, plus the daily Crest
@@ -15,7 +15,7 @@ Start it with:  py lite_main.py        Build it with:  py build_lite.py
 from __future__ import annotations
 
 
-__version__ = "1.1.1"          # LITE has its own version number; it does not follow ReRun's
+__version__ = "1.1.2"          # LITE has its own version number; it does not follow ReRun's
 APP_NAME = "ReRun LITE"
 EXE_NAME = "RerunLite"          # RerunLite.exe - never Rerun.exe, so the two can sit side by side
 
