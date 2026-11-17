@@ -30,7 +30,7 @@ def tree() -> tuple[Path, Path]:
     make_install(tmp / "RerunLite-1.1.1" / "RerunLite", data=True)           # older, holds data
     (tmp / "RerunLite-1.0.0.zip").write_bytes(b"z" * 500)                    # an older download
     (tmp / "RerunLite-1.1.2.zip").write_bytes(b"z" * 500)                    # this version's own download
-    (tmp / "RerunLite-1.2.0.zip").write_bytes(b"z" * 500)                    # a newer one
+    (tmp / "RerunLite-9.0.0.zip").write_bytes(b"z" * 500)                    # a newer one
     make_install(tmp / "RerunLite-1.3.0" / "RerunLite")                      # a newer folder
     (tmp / "RerunLite-0.9").mkdir()                                          # named alike, no exe: not an install
     (tmp / "src" / ".git").mkdir(parents=True)
