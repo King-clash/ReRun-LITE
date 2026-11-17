@@ -8,6 +8,7 @@
                           mode   off | weekday | cycle
                           week   {"Monday": "Shrine of Perdition", ...}            (weekday mode)
                           cycle  {"start": name, "anchor": "YYYY-MM-DD", "only": [names]}   (cycle mode)
+                          timezone  "computer" or "UTC+10:00" ...   only changes how each palace's slot is SHOWN
 
 "Today" is the GAME day: it starts at the 6 AM UTC-6 reset (rerun.checklist.GAME_TZ / RESET_HOUR, the same clock
 Crest and the checklist already use), never at the computer's midnight.
@@ -20,7 +21,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import cv2
@@ -50,6 +51,7 @@ class Schedule:
     cycle_start: str = ""
     cycle_anchor: str = ""
     cycle_only: list = field(default_factory=list)
+    timezone: str = "computer"            # how slots are written on screen; it never changes which palace runs
 
 
 @dataclass
@@ -72,6 +74,83 @@ def game_date(now: datetime | None = None) -> date:
     """The game's calendar day: it turns over at RESET_HOUR in GAME_TZ (6 AM UTC-6)."""
     now = (now or datetime.now(GAME_TZ)).astimezone(GAME_TZ)
     return (now - timedelta(hours=RESET_HOUR)).date()
+
+
+# ---------------------------------------------------------------- time zones (display only)
+TZ_COMPUTER = "computer"
+_TZ_RE = re.compile(r"^UTC([+-])(\d{1,2}):(\d{2})$")
+
+
+def normalize_tz(value) -> str:
+    """'UTC+10:00' style, or TZ_COMPUTER. Anything else (empty, a city name, an offset the world does not use) is the computer's zone."""
+    m = _TZ_RE.match(str(value or "").strip())
+    if not m:
+        return TZ_COMPUTER
+    sign, hh, mm = m.group(1), int(m.group(2)), int(m.group(3))
+    minutes = hh * 60 + mm
+    if mm > 59 or (sign == "+" and minutes > 14 * 60) or (sign == "-" and minutes > 12 * 60):
+        return TZ_COMPUTER
+    return f"UTC{sign}{hh:02d}:{mm:02d}"
+
+
+def parse_tz(value):
+    """A fixed-offset tzinfo, or None for 'this computer' (which follows the PC's daylight saving)."""
+    v = normalize_tz(value)
+    if v == TZ_COMPUTER:
+        return None
+    m = _TZ_RE.match(v)
+    off = timedelta(hours=int(m.group(2)), minutes=int(m.group(3)))
+    return timezone(-off if m.group(1) == "-" else off)
+
+
+def tz_choices() -> list[tuple[str, str]]:
+    """(value, label) for the Time zone setting: this computer first, then every real UTC offset."""
+    odd = {-9 * 60 - 30, -3 * 60 - 30, 3 * 60 + 30, 4 * 60 + 30, 5 * 60 + 30, 5 * 60 + 45, 6 * 60 + 30, 8 * 60 + 45, 9 * 60 + 30,
+           10 * 60 + 30, 12 * 60 + 45}
+    mins = sorted(set(range(-12 * 60, 14 * 60 + 1, 60)) | odd)
+    out = [(TZ_COMPUTER, "This computer")]
+    for t in mins:
+        sign, a = ("-" if t < 0 else "+"), abs(t)
+        v = f"UTC{sign}{a // 60:02d}:{a % 60:02d}"
+        out.append((v, v))
+    return out
+
+
+def _in_zone(dt: datetime, tz: str) -> datetime:
+    z = parse_tz(tz)
+    return dt.astimezone(z) if z is not None else dt.astimezone()
+
+
+def fmt_when(dt: datetime, tz: str = TZ_COMPUTER) -> str:
+    """'Mon 22:00' for a moment, written in the chosen zone."""
+    return _in_zone(dt, tz).strftime("%a %H:%M")
+
+
+def fmt_slot(start: datetime, end: datetime, tz: str = TZ_COMPUTER) -> str:
+    """'Mon 22:00 to Tue 22:00 (UTC+10:00)': a palace's whole slot, written in the chosen zone."""
+    label = "this computer" if normalize_tz(tz) == TZ_COMPUTER else normalize_tz(tz)
+    return f"{fmt_when(start, tz)} to {fmt_when(end, tz)} ({label})"
+
+
+def slot_times(gd: date) -> tuple[datetime, datetime]:
+    """When the game day `gd` starts and ends: 06:00 UTC-6 to 06:00 UTC-6 the next day."""
+    start = datetime(gd.year, gd.month, gd.day, RESET_HOUR, tzinfo=GAME_TZ)
+    return start, start + timedelta(days=1)
+
+
+def until_switch(now: datetime | None = None) -> int:
+    """Seconds until the game day (and so the palace) changes."""
+    g = (now or datetime.now(GAME_TZ)).astimezone(GAME_TZ)
+    reset = g.replace(hour=RESET_HOUR, minute=0, second=0, microsecond=0)
+    if g >= reset:
+        reset += timedelta(days=1)
+    return round((reset - g).total_seconds())
+
+
+def fmt_left(seconds: float) -> str:
+    s = max(0, int(seconds))
+    h, m = s // 3600, s % 3600 // 60
+    return f"{h}h {m:02d}m" if h else f"{m}m"
 
 
 # ---------------------------------------------------------------- the list
@@ -115,13 +194,15 @@ def load_schedule(root: str | Path) -> Schedule:
     cyc = raw.get("cycle") or {}
     mode = raw.get("mode") if raw.get("mode") in MODES else "off"
     return Schedule(mode, {d: str(n) for d, n in (raw.get("week") or {}).items() if d in DAYS and n},
-                    str(cyc.get("start") or ""), str(cyc.get("anchor") or ""), [str(n) for n in cyc.get("only") or []])
+                    str(cyc.get("start") or ""), str(cyc.get("anchor") or ""), [str(n) for n in cyc.get("only") or []],
+                    normalize_tz(raw.get("timezone")))
 
 
 def save_schedule(root: str | Path, s: Schedule) -> None:
     path = Path(root) / SCHEDULE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
-    body = {"mode": s.mode, "week": s.week, "cycle": {"start": s.cycle_start, "anchor": s.cycle_anchor, "only": s.cycle_only}}
+    body = {"mode": s.mode, "week": s.week, "cycle": {"start": s.cycle_start, "anchor": s.cycle_anchor, "only": s.cycle_only},
+            "timezone": normalize_tz(s.timezone)}
     path.write_text(json.dumps(body, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
@@ -174,6 +255,67 @@ def choose(root: str | Path, now: datetime | None = None) -> Choice:
         return out
     out.path = path
     return out
+
+
+@dataclass
+class Slot:
+    """One game day's palace. `day` is the game's weekday; `local_day` the weekday its start falls on in your zone."""
+    day: str
+    local_day: str
+    game_date: date
+    start: datetime
+    end: datetime
+    palace: Palace | None = None
+    problem: str = ""
+
+
+def _palace_on(s: Schedule, plist: list[Palace], gd: date, day: str) -> tuple[Palace | None, str]:
+    if s.mode == "off":
+        return None, "The palace selector is off."
+    if not plist:
+        return None, f"The palace list ({LIST_FILE}) is empty."
+    if s.mode == "weekday":
+        name = s.week.get(day, "")
+        if not name:
+            return None, f"No palace is chosen for {day}."
+        p = find(plist, name)
+        return (p, "") if p else (None, f"'{name}' is not in {LIST_FILE}.")
+    order = cycle_order(plist, s)
+    if not order:
+        return None, "The cycle has no palaces."
+    start = next((i for i, p in enumerate(order) if p.name.lower() == s.cycle_start.strip().lower()), 0)
+    try:
+        anchor = date.fromisoformat(s.cycle_anchor)
+    except ValueError:
+        anchor = game_date()
+    return order[(start + (gd - anchor).days) % len(order)], ""
+
+
+def slots(root: str | Path, count: int = 7, now: datetime | None = None, tz: str | None = None) -> list[Slot]:
+    """The next `count` game days' palaces, starting with today's, with each slot's start and end in `tz` (the schedule's
+    zone unless given). The zone only changes the times shown; the palace of a slot is decided by its game day."""
+    s = load_schedule(root)
+    zone = normalize_tz(s.timezone if tz is None else tz)
+    try:
+        plist = read_list(root)
+    except ValueError:
+        plist = []
+    first, out = game_date(now), []
+    z = parse_tz(zone)
+    for i in range(max(0, count)):
+        gd = first + timedelta(days=i)
+        day = DAYS[gd.weekday()]
+        start, end = (t.astimezone(z) if z is not None else t.astimezone() for t in slot_times(gd))
+        palace, problem = _palace_on(s, plist, gd, day)
+        if palace is not None and not image_path(root, palace).is_file():
+            problem = f"picture missing: {palace.image}"
+        out.append(Slot(day, DAYS[start.weekday()], gd, start, end, palace, problem))
+    return out
+
+
+def next_slot_for_day(root: str | Path, day: str, now: datetime | None = None) -> Slot:
+    """The next slot (today's included) whose game weekday is `day`."""
+    return next(sl for sl in slots(root, 7, now) if sl.day == day)
 
 
 def runs_on(s: Schedule, palaces: list[Palace], now: datetime | None = None) -> dict[str, list[str]]:

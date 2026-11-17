@@ -48,6 +48,38 @@ def find_tile(screen: np.ndarray, picture: np.ndarray) -> tuple[float, int, int,
 class LiteCrest(CrestScript):
     PALACE_ROOT = None        # set by LiteManager: the app folder (palaces.yaml, images/, data/lite/)
 
+    # What the window reads while Crest runs (rerun_lite/phases.py, stuck.py): the screen state, when Crest last made progress,
+    # and whether it is recovering. They live in ctx.params, so the engine itself is untouched; the base class's own
+    # attributes (self.state, self.last_progress) simply write through to it.
+    @property
+    def state(self):
+        return self.ctx.params.get("script_state", "unknown")
+
+    @state.setter
+    def state(self, value):
+        self.ctx.params["script_state"] = value
+
+    @property
+    def last_progress(self):
+        return self.ctx.params.get("last_progress", 0.0)
+
+    @last_progress.setter
+    def last_progress(self, value):
+        self.ctx.params["last_progress"] = value
+
+    def _recovering(self, what, fn, *a, **k):
+        self.ctx.params["recovering"] = what
+        try:
+            return fn(*a, **k)
+        finally:
+            self.ctx.params.pop("recovering", None)
+
+    def restart_game(self, scheduled: bool = False) -> None:
+        return self._recovering("restarting the game", super().restart_game, scheduled)
+
+    def recover_crash(self) -> None:
+        return self._recovering("relaunching the game", super().recover_crash)
+
     def _selector_root(self):
         return self.PALACE_ROOT or self.ctx.vision.store.folder.parent
 
