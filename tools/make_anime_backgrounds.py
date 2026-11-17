@@ -5,7 +5,7 @@
 
 Original animation drawn here with numpy and OpenCV: no artwork from any show, game or website. The look follows what
 animators call hand-drawn VFX, not smooth motion graphics: hard edges, thick outlines, no blur and no easing, and every
-motion is animated "on twos" (a new drawing every second frame) or "on threes". Each loop is 8 seconds at 24 fps and is
+motion is animated "on twos" (a new drawing every second frame) or "on threes". Each loop is 10 seconds at 24 fps and is
 seamless: every motion repeats a whole number of times per loop. They sit behind the app window, so the shapes are bold
 but the values stay close to the theme's page colour; text and numbers on top stay readable.
 """
@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 W, H = 640, 360                      # drawn small and shown at 2x with hard pixels
-OUT_W, OUT_H, FPS, SECONDS = 1280, 720, 24, 8
+OUT_W, OUT_H, FPS, SECONDS = 1280, 720, 24, 10
 N = FPS * SECONDS
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 

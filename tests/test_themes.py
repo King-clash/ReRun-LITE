@@ -31,7 +31,8 @@ def luminance(h: str) -> float:
 
 
 def test_every_theme_is_complete_readable_and_has_its_video():
-    assert list(palettes.LOOKS) == ["ahri", "midnight", "sakura", "ember", "aurora", "neon"]
+    assert list(palettes.LOOKS)[:6] == ["ahri", "midnight", "sakura", "ember", "aurora", "neon"]      # the originals come first
+    assert list(palettes.LOOKS)[6:] == list(palettes.ANIME_KEYS) and len(palettes.ANIME_KEYS) == 16
     assert list(theme.THEMES)[-3:] == ["dark", "light", "auto"]                          # ReRun's own themes come last
     for key, look in palettes.LOOKS.items():
         assert set(KEYS) <= set(look.palette), key
@@ -39,7 +40,8 @@ def test_every_theme_is_complete_readable_and_has_its_video():
         # text must stand out from the page and from the cards, whichever way round the theme is
         assert abs(luminance(p["label"]) - luminance(p["bg"])) > 0.6, key
         assert abs(luminance(p["label"]) - luminance(p["card"])) > 0.55, key
-        assert luminance(p["bg"]) < 0.2 if look.dark else luminance(p["bg"]) > 0.8, key
+        light_min = 0.8 if key in ("ahri", "midnight", "sakura", "ember", "aurora", "neon") else 0.65   # parchment is a light page too
+        assert luminance(p["bg"]) < 0.2 if look.dark else luminance(p["bg"]) > light_min, key
         assert abs(luminance(p["secondary"]) - luminance(p["bg"])) > 0.3, key              # grey text still reads
         assert (ROOT / "assets" / look.video).is_file(), f"{key}: assets/{look.video} is missing (py tools/make_background.py)"
         cap = cv2.VideoCapture(str(ROOT / "assets" / look.video))

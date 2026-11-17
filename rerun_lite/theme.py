@@ -57,7 +57,8 @@ def apply(a: appearance.Appearance) -> appearance.Resolved:
 
 def apply_palette(key: str = DEFAULT_THEME) -> str:
     """(legacy, used by the tests) a 1.0.x theme key; returns "dark", "light" or "auto" for ios.init."""
-    res = apply(appearance.LEGACY_THEMES.get(key, appearance.Appearance()))
+    look = appearance.LEGACY_THEMES.get(key) or (appearance.Appearance(key) if key in palettes.LOOKS else appearance.Appearance())
+    res = apply(look)
     return "auto" if key == "auto" else res.ios_mode
 
 
