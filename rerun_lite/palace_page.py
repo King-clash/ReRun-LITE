@@ -47,6 +47,16 @@ class PalacePageMixin:
         self._pal_mode.set(palaces.MODES[sched.mode])
         self._pal_mode.pack()
 
+        gz = ios.Group(wrap, header="Time zone",
+                       footer="Only changes how each palace's slot is shown below (its start and end in your day and time). "
+                              "Which palace runs is always decided by the game day, so this never changes what Crest does.")
+        gz.pack(fill="x", pady=(px(14), 0))
+        self._pal_tz_choices = palaces.tz_choices()
+        self._pal_tz = ios.Select(gz.row("Show times in"), values=[lbl for _v, lbl in self._pal_tz_choices],
+                                  command=self._pal_save)
+        self._pal_tz.set(next((lbl for v, lbl in self._pal_tz_choices if v == sched.timezone), "This computer"))
+        self._pal_tz.pack()
+
         card = ios.Card(wrap, pad=10)
         card.pack(fill="x", pady=(px(14), 0))
         self._pal_today = tk.Label(card.body, text="", bg=C["card"], fg=C["label"], font=F["body"], anchor="w",
@@ -70,6 +80,16 @@ class PalacePageMixin:
             sel.set(sched.week.get(day) if sched.week.get(day) in names else NONE)
             sel.pack()
             self._pal_week[day] = sel
+
+        gn = ios.Group(wrap, header="Coming up",
+                       footer="The next seven game days. Each slot runs from the 6 AM UTC-6 reset to the next one, shown here in "
+                              "the time zone above.")
+        gn.pack(fill="x", pady=(px(24), 0))
+        for sl in palaces.slots(root, 7, None, sched.timezone):
+            right = gn.row(f"{sl.day}" + ("  (today)" if sl is not None and sl.game_date == palaces.game_date() else ""),
+                           palaces.fmt_slot(sl.start, sl.end, sched.timezone))
+            tk.Label(right, text=sl.palace.name if sl.palace else (sl.problem or "-"), bg=C["card"],
+                     fg=C["label"] if sl.palace and not sl.problem else C["red"], font=F["footnote_semi"]).pack()
 
         gc = ios.Group(wrap, header="Cycle",
                        footer="Used in Cycle mode: one palace per game day in list order, wrapping around. A palace that is not "
@@ -110,7 +130,8 @@ class PalacePageMixin:
         mode = next((k for k, v in palaces.MODES.items() if v == self._pal_mode.get()), "off")
         week = {d: s.get() for d, s in self._pal_week.items() if s.get() in self._pal_names}
         only = [n.strip() for n in self._pal_only_var.get().split(",") if n.strip()]
-        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only)
+        tz = next((v for v, lbl in getattr(self, "_pal_tz_choices", []) if lbl == self._pal_tz.get()), old.timezone)
+        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only, tz)
 
     def _pal_save(self, *_a):
         s = self._pal_schedule()
@@ -140,7 +161,7 @@ class PalacePageMixin:
 
     def _pal_refresh_today(self):
         c = palaces.choose(self.m.root)
-        gd = c.game_date.strftime("%a %d %b")
+        gd = c.game_date.strftime("%a %d %b") + f", switches in {palaces.fmt_left(palaces.until_switch())}"
         if c.mode == "off":
             text, fg = "Selector is off. Crest uses its own palace settings.", C["secondary"]
         elif c.ok:
