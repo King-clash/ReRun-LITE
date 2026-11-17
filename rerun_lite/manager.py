@@ -102,19 +102,16 @@ class LiteManager(Manager):
                 ended = phases.end_phase(status, detail)
                 self._ended[inst.name] = ended
                 self.stuck.forget(inst.name)
+                # close the tracker's session with a reason in the form runs.classify_reason reads
+                reason = (f"finished: {detail}" if ended == "completed" else
+                          f"error: {detail}" if status == "error" else f"stopped: {detail}")
+                self.runs.end_session(inst.name, reason, inst.account, inst.script)
                 if ended == "failed":
                     self.fire_alert("failed", inst.name, detail)
                 elif ended == "completed" and not inst.dry_run:
                     self.fire_alert("finished", inst.name, detail)
         except Exception as e:  # noqa: BLE001
             errlog.note("lite.set_status", e)
-
-    def _record_session(self, inst: Instance, started_at: float, before: dict, reason: str) -> None:
-        super()._record_session(inst, started_at, before, reason)
-        try:
-            self.runs.end_session(inst.name, reason, inst.account, inst.script)
-        except Exception as e:  # noqa: BLE001
-            errlog.note("lite.end_session", e)
 
     def phase(self, name: str) -> tuple[str, str]:
         """(phase, a short line about it) for an emulator, see rerun_lite/phases.py."""
