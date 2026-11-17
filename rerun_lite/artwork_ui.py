@@ -268,6 +268,15 @@ class ArtworkMixin:
         c = self._art_state()
         return art.effective(c.prefs, c.lib.collections, cid)
 
+    def _art_follow_look(self, look_key: str) -> None:
+        """An anime theme (palettes.ANIME_KEYS) brings its own artwork: choose that anime's collection, once, when the theme is
+        picked. Changing the collection afterwards in Settings > Artwork is never undone by this."""
+        from . import palettes
+        c = self._art_state()
+        if look_key in palettes.ANIME_KEYS and look_key in c.lib.collections and c.prefs.collection != look_key:
+            c.prefs.collection = look_key
+            self._art_save()
+
     def _art_save(self) -> None:
         c = self._art_state()
         c.rev += 1

@@ -165,6 +165,8 @@ class LiteApp(ArtworkMixin, PagesMixin, PalacePageMixin, AppearancePageMixin, Sh
             return
         tab, section = self.nb.index(), self._set_nav.current
         emulator = self.selected()
+        if new.look != self._look.look:
+            self._art_follow_look(new.look)
         self._look = new
         self._bg_save(appearance=new.to_dict())
         veil = tk.Frame(self, bg=ios.C["bg"])                       # covers the window while it is rebuilt (about 2 s)
