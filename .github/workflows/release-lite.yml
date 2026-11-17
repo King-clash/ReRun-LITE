@@ -1,0 +1,55 @@
+# Builds ReRun LITE on Windows when a version tag is pushed (git tag v1.3.0 && git push origin v1.3.0), or by hand from the
+# Actions tab. It runs the repo's own build (py build_lite.py --release: PyInstaller, the exe's self-test and the leak check)
+# and puts the zip on a DRAFT release, so nothing is public until someone opens the exe and presses Publish.
+name: Build ReRun LITE release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag for the draft release (for example v1.3.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Install Tesseract (the exe bundles it for reading game text)
+        run: choco install tesseract --no-progress -y
+      - name: Build the release zip (self-test and leak check run inside)
+        run: python build_lite.py --release
+      - name: Check the zip has what a release needs
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem release -Filter "RerunLite-*.zip" | Select-Object -First 1
+          if (-not $zip) { throw "no release zip was made" }
+          if (-not (Test-Path "release/RerunLite/tesseract/tesseract.exe")) { throw "Tesseract was not bundled" }
+          Write-Host "$($zip.Name) $([math]::Round($zip.Length/1MB,1)) MB"
+      - name: Create the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          $zip = (Get-ChildItem release -Filter "RerunLite-*.zip" | Select-Object -First 1).FullName
+          $ver = $env:TAG.TrimStart("v")
+          $notes = "release_notes/v$ver.md"
+          if (-not (Test-Path $notes)) { throw "$notes is missing" }
+          gh release create $env:TAG $zip --draft --title "ReRun LITE $ver" --notes-file $notes
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RerunLite-zip
+          path: release/RerunLite-*.zip
