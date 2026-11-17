@@ -1,0 +1,31 @@
+# Publishes the DRAFT release made by "Build ReRun LITE release": run it from the Actions tab with the tag (for example v1.3.0).
+# It refreshes the release text from release_notes/<tag>.md, creates the tag on main and makes the release public.
+name: Publish ReRun LITE release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The draft release's tag (for example v1.3.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -e
+          notes="release_notes/${TAG}.md"
+          test -f "$notes"
+          gh release view "$TAG" --json isDraft,assets --jq '.isDraft,(.assets|length)'
+          test "$(gh release view "$TAG" --json assets --jq '[.assets[].name|select(endswith(".zip"))]|length')" -ge 1
+          gh release edit "$TAG" --draft=false --latest --target main --notes-file "$notes"
+          gh release view "$TAG" --json url,isDraft,tagName --jq '.url,.isDraft,.tagName'
