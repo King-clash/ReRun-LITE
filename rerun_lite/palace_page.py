@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import os
+import threading
 import tkinter as tk
 from tkinter import filedialog
 
 from rerun import errlog, ios
 from rerun.ios import C, F, px
 
-from . import palaces
+from . import crest as lite_crest
+from . import palaces, schedule_reader
 
 NONE = "(none)"
 
@@ -69,6 +71,18 @@ class PalacePageMixin:
                              "'Shrine of Cursed Claw: images/shrine_of_cursed_claw.png' to palaces.yaml.",
                        "orange").pack(fill="x", pady=(px(14), 0))
 
+        gk = ios.Group(wrap, header="Check the game now",
+                       footer="Each button takes ONE screenshot of the selected emulator and reads it here. Nothing is tapped. Open "
+                              "Exploring > Crest Palace in the game first. 'Add' cuts the picture of a banner that matches none of "
+                              "your palaces out of that screenshot and adds it to the list (it never replaces a picture or a line).")
+        gk.pack(fill="x", pady=(px(24), 0))
+        ios.Button(gk.row("Check the Crest Palace screen", "Which of your palaces are on the screen, and today's."),
+                   "Check now", self._pal_check_now, kind="tinted", small=True).pack()
+        ios.Button(gk.row("Add a palace that is not in your list", "For a new or limited-time palace."),
+                   "Add from screen…", self._pal_add_from_screen, kind="tinted", small=True).pack()
+        ios.Button(gk.row("Read the game's schedule", "Checks each day's palace against the game's own Schedule. Taps menus."),
+                   "Read…", self._pal_read_schedule, kind="tinted", small=True).pack()
+
         if sched.mode != "off" and names:
             gs = ios.Group(wrap, header=f"Next 7 days in your time zone ({palaces.zone_name(sched.timezone)})",
                            footer="Each palace is open for one game day, from the 6 AM UTC-6 reset to the next one. These are "
@@ -113,6 +127,18 @@ class PalacePageMixin:
         self._pal_only_var.trace_add("write", lambda *a: self._pal_only_typed())
         del order
 
+        gb = ios.Group(wrap, header="If today's palace is not on the screen",
+                       footer="Off by default: Crest then stops and says so, and never runs another palace. Turn it on to let Crest "
+                              "try these palaces in order (names separated by commas, as in the palace list) and run the first one "
+                              "that is on the Crest Palace screen. The Log and a Discord message say when a backup was used.")
+        gb.pack(fill="x", pady=(px(24), 0))
+        self._pal_backup_on = tk.BooleanVar(value=sched.backup_on)
+        ios.Switch(gb.row("Run a backup palace", "Only when today's palace is nowhere on the Crest Palace screen."),
+                   self._pal_backup_on, command=self._pal_save).pack()
+        self._pal_backup_var = tk.StringVar(value=", ".join(sched.backup))
+        ios.Field(gb.row("Backup palaces, in order"), self._pal_backup_var, width=34).pack()
+        self._pal_backup_var.trace_add("write", lambda *a: self._pal_only_typed())
+
         gl = ios.Group(wrap, header=f"Palace list ({len(plist)})",
                        footer="Edit palaces.yaml (next to ReRun LITE) to add or change palaces: one line each, "
                               "'Palace name: images/file.png'. Image paths are written only there.")
@@ -135,12 +161,15 @@ class PalacePageMixin:
         week = {d: s.get() for d, s in self._pal_week.items() if s.get() in self._pal_names}
         only = [n.strip() for n in self._pal_only_var.get().split(",") if n.strip()]
         tz = self._pal_tz_values.get(self._pal_tz.get(), old.timezone)
-        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only, tz)
+        backup = [n.strip() for n in self._pal_backup_var.get().split(",") if n.strip()]
+        return palaces.Schedule(mode, week, old.cycle_start, old.cycle_anchor, only, tz,
+                                bool(self._pal_backup_on.get()), backup)
 
     def _pal_save(self, *_a, rebuild: bool = True):
         s = self._pal_schedule()
         if s.mode == "cycle" and not s.cycle_anchor:
             s.cycle_start, s.cycle_anchor = self._pal_start.get(), palaces.game_date().isoformat()
+        unknown = [n for n in s.backup if palaces.find([pl for pl in self._pal_palaces()], n) is None]
         try:
             palaces.save_schedule(self.m.root, s)
         except OSError as e:
@@ -149,8 +178,156 @@ class PalacePageMixin:
             return
         self._pal_refresh_today()
         self._status_sig = None            # the chip and badges re-check the palace at once
-        self.flash("Palace selector saved", "ok")
+        if unknown:
+            self.flash("Saved. Not in the palace list, so ignored: " + ", ".join(unknown), "warn")
+        else:
+            self.flash("Palace selector saved", "ok")
         if rebuild:                        # the "next 7 days" and weekday labels follow the new choices
+            self.after_idle(self._pal_build)
+
+    def _pal_palaces(self) -> list:
+        try:
+            return palaces.read_list(self.m.root)
+        except ValueError:
+            return []
+
+    # ------------------------------------------------------------ check the game now / add from the screen
+    _pal_sync = False                      # tests turn this on to run the screenshot step on the calling thread
+
+    def _pal_pictures(self) -> list:
+        import cv2
+        import numpy as np
+        out = []
+        for p in self._pal_palaces():
+            path = palaces.image_path(self.m.root, p)
+            img = cv2.imdecode(np.fromfile(str(path), np.uint8), cv2.IMREAD_COLOR) if path.is_file() else None
+            if img is not None:
+                out.append((p.name, img))
+        return out
+
+    def _pal_grab(self, then):
+        """One screenshot of the selected emulator (or the first one), off the window's thread; then(name, shot, error)."""
+        name = self.selected() or next(iter(self.m.instances), None)
+        if name is None:
+            ios.alert(self, "Add an emulator on the Auto Crest tab first.", "Palace check")
+            return
+
+        def work():
+            try:
+                shot, err = self.m.screenshot(name), ""
+            except Exception as e:  # noqa: BLE001 - say it in words, never a traceback
+                errlog.note("lite.palace_grab", e)
+                shot, err = None, str(e) or e.__class__.__name__
+            if self._pal_sync:
+                then(name, shot, err)
+                return
+            try:
+                self.after(0, lambda: then(name, shot, err))
+            except (tk.TclError, RuntimeError):
+                pass
+        if self._pal_sync:
+            work()
+        else:
+            threading.Thread(target=work, daemon=True).start()
+
+    def _pal_check_now(self):
+        self._pal_grab(self._pal_check_done)
+
+    def _pal_check_done(self, name, shot, err):
+        if shot is None:
+            ios.alert(self, f"Could not get a screenshot from {name}: {err}\nIs BlueStacks open with ADB turned on?", "Palace check")
+            return
+        found, unknown = lite_crest.scan_palace_screen(shot, self._pal_pictures())
+        lines = [f"Screenshot of {name}:"]
+        if not found:
+            lines.append("None of your palaces is on this screen. Open Exploring > Crest Palace in the game and check again.")
+        for pname, score, _y in found:
+            lines.append(f"  on screen: {pname}  (match {score:.2f})")
+        if unknown:
+            lines.append(f"{len(unknown)} banner(s) match none of your pictures: a new palace? Press 'Add from screen…'.")
+        c = palaces.choose(self.m.root)
+        if c.palace is not None and found:
+            lines.append(f"Today's palace ({c.day}): {c.palace.name} - "
+                         + ("on this screen." if any(f[0] == c.palace.name for f in found)
+                            else "NOT on this screen (scroll the list, or it is not open today)."))
+        ios.alert(self, "\n".join(lines), "Palace check")
+
+    def _pal_read_schedule(self):
+        """Open the game's Schedule, read about a week of palaces, put everything back, and say what matches (see schedule_reader.py)."""
+        if self._busy_any():
+            ios.alert(self, "Stop Crest first: reading the schedule taps menus in the game.", "Read the game's schedule")
+            return
+        name = self.selected() or next(iter(self.m.instances), None)
+        if name is None:
+            ios.alert(self, "Add an emulator on the Auto Crest tab first.", "Read the game's schedule")
+            return
+        if not ios.confirm(self, f"This opens Exploring > Schedule in the game on {name}, reads about a week of palaces, then puts "
+                                 "the schedule's filter buttons back and closes the window. It taps menus but starts, buys and "
+                                 "changes nothing on your account.\n\nStart with the game on the Home screen. Takes about a minute.",
+                           "Read the game's schedule", ok="Read it"):
+            return
+        self.flash("Reading the game's schedule…", "info")
+
+        def work():
+            try:
+                from rerun.ocr import get_ocr
+                dev = self.m.device(name)
+                if not dev.is_connected():
+                    dev.connect()
+                res = schedule_reader.read_schedule(dev, get_ocr(self.m.config.get("tesseract_path", "auto")), self.m.vision,
+                                                    [p.name for p in self._pal_palaces()])
+                text, title = "\n".join(schedule_reader.describe(res, self.m.root)), "The game's palace schedule"
+            except schedule_reader.ScheduleError as e:
+                text, title = str(e), "Read the game's schedule"
+            except Exception as e:  # noqa: BLE001 - say it in words, never a traceback
+                errlog.note("lite.palace_schedule", e)
+                text, title = f"Could not read the schedule: {e}", "Read the game's schedule"
+            if self._pal_sync:
+                self._pal_show(text, title)
+                return
+            try:
+                self.after(0, lambda: self._pal_show(text, title))
+            except (tk.TclError, RuntimeError):
+                pass
+        if self._pal_sync:
+            work()
+        else:
+            threading.Thread(target=work, daemon=True).start()
+
+    def _pal_show(self, text: str, title: str):
+        ios.alert(self, text, title)
+
+    def _pal_add_from_screen(self):
+        self._pal_grab(self._pal_add_done)
+
+    def _pal_add_done(self, name, shot, err):
+        if shot is None:
+            ios.alert(self, f"Could not get a screenshot from {name}: {err}\nIs BlueStacks open with ADB turned on?", "Add a palace")
+            return
+        found, unknown = lite_crest.scan_palace_screen(shot, self._pal_pictures())
+        if not found:
+            ios.alert(self, "None of your palaces is on this screen, so there is nothing to measure from. Open Exploring > "
+                            "Crest Palace in the game (with at least one palace from your list showing) and try again.", "Add a palace")
+            return
+        if not unknown:
+            ios.alert(self, "Every banner fully on this screen matches a picture in your list. If a palace is missing, scroll the "
+                            "list in the game so it is fully visible and try again.", "Add a palace")
+            return
+        added = []
+        for y in unknown:
+            text = ios.ask_string(self, "Add a palace", f"A banner (height {y}) matches none of your palaces. Type its name as the "
+                                  "game shows it, for example 'Shrine of Subspace'. Cancel to skip it.")
+            if not text:
+                continue
+            try:
+                p = palaces.add_palace(self.m.root, text, palaces.cut_banner(shot, y))
+            except (ValueError, OSError) as e:
+                ios.alert(self, str(e), "Add a palace")
+                continue
+            added.append(p.name)
+        if added:
+            self.flash("Added to the palace list: " + ", ".join(added), "ok")
+            self._status_sig = None
             self.after_idle(self._pal_build)
 
     def _pal_tz_changed(self, *_a):

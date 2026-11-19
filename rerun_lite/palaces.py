@@ -56,6 +56,8 @@ class Schedule:
     cycle_anchor: str = ""
     cycle_only: list = field(default_factory=list)
     timezone: str = "computer"      # "computer" or "UTC+HH:MM": how slot times are shown (never which palace runs)
+    backup_on: bool = False         # OFF unless the user turns it on: with it on, Crest tries the backup palaces below
+    backup: list = field(default_factory=list)   # when today's palace is nowhere on the Crest Palace screen, in this order
 
 
 @dataclass
@@ -209,6 +211,51 @@ def find(palaces: list[Palace], name: str) -> Palace | None:
     return next((p for p in palaces if p.name.lower() == wanted), None)
 
 
+def cut_banner(screen, centre_y: int):
+    """The picture of the palace banner whose middle is at `centre_y` on a Crest Palace screenshot (inside the banner's
+    frame, clear of the day-count badge and the 'COMPLETE!!' tag that sit on its edges)."""
+    h, w = screen.shape[:2]
+    k = w / 720.0
+    y0, y1 = max(0, int((centre_y - 65) * k)), min(h, int((centre_y + 65) * k))
+    return screen[y0:y1, int(44 * k):int(676 * k)].copy()
+
+
+def add_palace(root: str | Path, name: str, picture) -> Palace:
+    """Add one palace to palaces.yaml with its picture in images/. It never replaces a picture or a line that is already
+    there: a name or file that exists is refused with a message that says why. Raises ValueError."""
+    name = " ".join(str(name).split())
+    if not name:
+        raise ValueError("Give the palace a name.")
+    if any(ch in name for ch in (":", "#")) or name[0] in "-?[]{}&*!|>'\"%@`":
+        raise ValueError("The name cannot contain ':' or '#' or start with a symbol (it is written into palaces.yaml).")
+    if picture is None or getattr(picture, "size", 0) == 0:
+        raise ValueError("There is no picture to save.")
+    root = Path(root)
+    if find(read_list(root), name) is not None:
+        raise ValueError(f"'{name}' is already in {LIST_FILE}.")
+    palace = Palace(name, f"{IMAGE_DIR}/{slug(name)}.png")
+    target = image_path(root, palace)
+    if target.exists():
+        raise ValueError(f"{palace.image} already exists, so it was not replaced. Pick a different name.")
+    ok, buf = cv2.imencode(".png", picture)
+    if not ok:
+        raise ValueError("The picture could not be saved.")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    listing = root / LIST_FILE
+    raw = listing.read_bytes().decode("utf-8") if listing.is_file() else LIST_HEADER
+    crlf = "\r\n" in raw
+    eol = "\r\n" if crlf else "\n"
+    if raw and not raw.endswith("\n"):
+        raw += eol
+    buf.tofile(str(target))
+    try:
+        listing.write_bytes((raw + line_for(palace).rstrip("\n") + eol).encode("utf-8"))
+    except OSError:
+        target.unlink(missing_ok=True)                           # no half-added palace: the picture goes if the line cannot be written
+        raise
+    return palace
+
+
 # ---------------------------------------------------------------- the schedule
 def load_schedule(root: str | Path) -> Schedule:
     try:
@@ -219,14 +266,16 @@ def load_schedule(root: str | Path) -> Schedule:
     mode = raw.get("mode") if raw.get("mode") in MODES else "off"
     return Schedule(mode, {d: str(n) for d, n in (raw.get("week") or {}).items() if d in DAYS and n},
                     str(cyc.get("start") or ""), str(cyc.get("anchor") or ""), [str(n) for n in cyc.get("only") or []],
-                    normalize_tz(str(raw.get("timezone") or TZ_COMPUTER)))
+                    normalize_tz(str(raw.get("timezone") or TZ_COMPUTER)),
+                    bool((raw.get("backup") or {}).get("on")), [str(n) for n in (raw.get("backup") or {}).get("order") or []])
 
 
 def save_schedule(root: str | Path, s: Schedule) -> None:
     path = Path(root) / SCHEDULE_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     body = {"mode": s.mode, "timezone": normalize_tz(s.timezone), "week": s.week,
-            "cycle": {"start": s.cycle_start, "anchor": s.cycle_anchor, "only": s.cycle_only}}
+            "cycle": {"start": s.cycle_start, "anchor": s.cycle_anchor, "only": s.cycle_only},
+            "backup": {"on": bool(s.backup_on), "order": s.backup}}
     path.write_text(json.dumps(body, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
@@ -285,6 +334,158 @@ def choose(root: str | Path, now: datetime | None = None) -> Choice:
         return out
     out.path = path
     return out
+
+
+# ---------------------------------------------------------------- the game's own schedule screen
+# Exploring > Schedule shows every palace day starting at 0:00 "PST" (08:00 UTC), four hours before the 06:00 UTC-6
+# reset (12:00 UTC) used for the game day above. Which of the two clocks the palace rotation really follows has not
+# been confirmed, so for those four hours the next day's palace is kept as a second choice (see alt_choice).
+SCHEDULE_TZ = timezone(timedelta(hours=-8))
+
+
+def alt_choice(root: str | Path, now: datetime | None = None) -> Choice | None:
+    """A second choice for the hours when the game's schedule screen and the game day disagree: the palace for the
+    schedule's day, when that day is already the next one. None outside those hours, with the selector off, or when
+    nothing usable is chosen for that day. It is only ever a candidate after today's own palace was not found."""
+    now = now or datetime.now(GAME_TZ)
+    gd = game_date(now)
+    sched = now.astimezone(SCHEDULE_TZ).date()
+    if sched <= gd:
+        return None
+    s = load_schedule(root)
+    if s.mode == "off":
+        return None
+    try:
+        plist = read_list(root)
+    except ValueError:
+        return None
+    palace, _why = palace_for(sched, s, plist)
+    if palace is None:
+        return None
+    path = image_path(root, palace)
+    out = Choice(s.mode, DAYS[sched.weekday()], sched, palace, path if path.is_file() else None)
+    out.starts, out.ends = slot_times(sched)
+    return out
+
+
+# ---------------------------------------------------------------- backup palaces (off unless the user turns them on)
+def backup_choices(root: str | Path, skip: set[str] | None = None) -> list[Choice]:
+    """The palaces to try, in the user's order, when today's palace is nowhere on the Crest Palace screen. Empty unless
+    the user turned the backup on. Names that are not in the palace list are ignored; so are those in `skip`."""
+    s = load_schedule(root)
+    if not s.backup_on or s.mode == "off":
+        return []
+    try:
+        plist = read_list(root)
+    except ValueError:
+        return []
+    skip = {n.lower() for n in (skip or set())}
+    out, gd = [], game_date()
+    for name in s.backup:
+        palace = find(plist, name)
+        if palace is None or palace.name.lower() in skip:
+            continue
+        skip.add(palace.name.lower())
+        path = image_path(root, palace)
+        out.append(Choice(s.mode, "backup", gd, palace, path if path.is_file() else None))
+    return out
+
+
+# ---------------------------------------------------------------- reading the game's own Schedule screen
+# Exploring > Schedule (Crest Palace filter on) lists every palace by date, each with a start and end time. These
+# functions only READ words that were already read from a screenshot; they never touch the game.
+_DATE_HEADER = re.compile(r"^(\d{1,2})/(\d{1,2})\(([A-Za-z]{3})\)$")
+_MD = re.compile(r"^(\d{1,2})/(\d{1,2})$")
+_HM = re.compile(r"^(\d{1,2}):(\d\d)$")
+
+
+@dataclass(frozen=True)
+class SchedEntry:
+    date: date | None         # the day heading the entry sits under (None if no heading was read above it)
+    name: str                 # the palace's name as in palaces.yaml when it matches one, else as read
+    known: bool               # True when the name matched a palace in the list
+    start: str                # as shown, e.g. "11/18 0:00" (game schedule time, labelled PST)
+    end: str
+
+
+def _match_name(raw: str, names: list[str]) -> tuple[str, bool]:
+    from rerun import textnav
+    toks = [t for t in textnav.tokens(raw) if len(t) >= 2 and t not in ("shrine", "temple", "of", "the")]
+    if not toks:
+        return raw, False
+    best, best_score = "", 0.0
+    for n in names:
+        want = textnav.distinctive(n)
+        if not want:
+            continue
+        s = sum(max(textnav.word_score(w, t) for t in toks) for w in want) / len(want)
+        if s > best_score:
+            best, best_score = n, s
+    return (best, True) if best_score >= 0.85 else (raw.strip(), False)
+
+
+def parse_schedule(words, names: list[str], year: int | None = None, today: date | None = None) -> list[SchedEntry]:
+    """Palace entries on one screenshot of the Schedule screen, in order. `words` are the OCR words (text, x, y, w, h)."""
+    from rerun import textnav
+    today = today or game_date()
+    year = year or today.year
+    heads = []
+    for w in words:
+        m = _DATE_HEADER.match(w.text.strip())
+        if m and w.x < 60:
+            try:
+                heads.append((w.y, date(year, int(m.group(1)), int(m.group(2)))))
+            except ValueError:
+                pass
+    heads.sort()
+    out = []
+    for tag in sorted((w for w in words if textnav.word_score("palace", w.text) >= 0.8 and 100 <= w.x <= 260), key=lambda w: w.y):
+        band = [w for w in words if abs(w.y - tag.y) <= 22 and w.x > tag.x + tag.w]
+        name = " ".join(w.text for w in sorted(band, key=lambda w: w.x))
+        if not textnav.tokens(name):
+            continue
+        shown = [w for w in words if tag.y + 20 <= w.y <= tag.y + 130 and 190 <= w.x <= 340]
+        dates = sorted((w for w in shown if _MD.match(w.text.strip())), key=lambda w: w.y)
+        times = sorted((w for w in shown if _HM.match(w.text.strip())), key=lambda w: w.y)
+        if len(dates) < 2 or len(times) < 2:
+            continue                                                # an entry cut off at the edge of the screen
+        # A one-day slot says its own date twice (start and end), and that is read far more reliably than the big heading, which
+        # the text reader sometimes shortens ("11/19" -> "1/19"). So: the slot's own date first; the heading only for a slot that
+        # runs for days (and only if it is a believable date, within a couple of months of now).
+        a, b = dates[0].text.strip(), dates[1].text.strip()
+        day = None
+        if a == b:
+            try:
+                day = date(year, int(a.split("/")[0]), int(a.split("/")[1]))
+            except ValueError:
+                day = None
+        if day is None:
+            head = next((d for y, d in reversed(heads) if y < tag.y), None)
+            if head is not None and -3 <= (head - today).days <= 60:
+                day = head
+        label, known = _match_name(name, names)
+        out.append(SchedEntry(day, label, known, f"{dates[0].text} {times[0].text}", f"{dates[1].text} {times[1].text}"))
+    return out
+
+
+def plan_vs_schedule(entries: list[SchedEntry], root: str | Path) -> list[dict]:
+    """For each day the game's schedule lists, the palace the selector would choose and whether the game lists it that day."""
+    s = load_schedule(root)
+    try:
+        plist = read_list(root)
+    except ValueError:
+        plist = []
+    days: dict[date, list[str]] = {}
+    for e in entries:
+        if e.date is not None:
+            days.setdefault(e.date, []).append(e.name)
+    rows = []
+    for d in sorted(days):
+        chosen, why = (None, "selector off") if s.mode == "off" else palace_for(d, s, plist)
+        rows.append({"date": d, "day": DAYS[d.weekday()], "open": days[d],
+                     "chosen": chosen.name if chosen else None, "note": why,
+                     "ok": bool(chosen and chosen.name in days[d])})
+    return rows
 
 
 # ---------------------------------------------------------------- slots: which palace, when, in your time zone
