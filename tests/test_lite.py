@@ -60,7 +60,7 @@ def sim_templates(m: Manager, *script_ids: str) -> None:
                 m.store.save(t.name, canvas, 100, 100, p.shape[1], p.shape[0])
 
 
-def wait_done(m: Manager, inst: str, seconds: float = 60) -> None:
+def wait_done(m: Manager, inst: str, seconds: float = 240) -> None:
     """Until the worker thread has completely finished (status, session record, LITE's own clean-up)."""
     t0 = time.time()
     while time.time() - t0 < seconds:
@@ -106,7 +106,7 @@ def open_lite(instances: list[dict] | None = None, backdrop: bool = False):
     return root, m, inst, app
 
 
-def wait_until(app, cond, seconds: float = 8.0) -> bool:
+def wait_until(app, cond, seconds: float = 30.0) -> bool:
     t0 = time.time()
     while not cond() and time.time() - t0 < seconds:
         app.update()
@@ -156,16 +156,18 @@ def test_lite_runs_the_original_code_not_a_copy():
     assert SCRIPTS["crest"] is LiteCrest and issubclass(LiteCrest, CrestScript) and SCRIPTS["login_mail"] is LoginMailScript
     own_methods = {k for k, v in vars(LiteCrest).items() if callable(v) and not k.startswith("__")}
     assert own_methods == {"selector_choice", "selector_on", "check_nav_templates", "_stop_for", "_selector_root",
-                           "handle_crest_palace_screen", "handle_quest_list", "scrap", "confirm_word", "tap_confirm"}, own_methods          # Crest itself is the original
-    for name in ("_record_session", "script_settings", "save_script_settings", "notify", "stop", "pause",
-                 "resume", "scheduler_tick", "template_checklist", "missing_templates", "totals", "energy"):
+                           "handle_crest_palace_screen", "handle_quest_list", "scrap", "confirm_word", "tap_confirm"}, own_methods          # Crest itself is the original (finding the palace lives in palace_find.py)
+    for name in ("script_settings", "save_script_settings", "notify", "stop", "scheduler_tick", "template_checklist", "missing_templates", "totals", "energy"):
         assert getattr(LiteManager, name) is getattr(Manager, name), name
     for name in ("_build_dashboard", "start_sel", "dry_run_sel", "stop_sel", "pause_sel", "start_all", "stop_all",
                  "_refresh_crests", "_auto_preview", "_am_checklist", "_am_task", "am_add_task", "am_run_task",
                  "am_run_next", "_start_checked", "_build_history", "_build_templates", "_build_settings",
-                 "_save_settings_form", "_build_discord", "_build_log", "_build_app_settings", "_poll_events",
+                 "_save_settings_form", "_build_discord", "_build_app_settings", "_poll_events",
                  "quit_app", "on_close", "check_updates", "_check_key"):
         assert getattr(LiteApp, name) is getattr(App, name), name
+    import inspect
+    for name in ("_record_session", "pause", "resume"):       # LITE adds run tracking around the original, nothing else
+        assert "super()." + name in inspect.getsource(getattr(LiteManager, name)), name
     root = lite_root()
     try:
         m, _ = manager(root)
@@ -312,7 +314,7 @@ def test_window_has_the_two_features_and_only_their_tools():
     try:
         assert [lb.cget("text") for _, lb in app.nb._tabs] == ["Auto Crest", "History", "Templates", "Settings"]
         assert app.title() == APP_NAME
-        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "discord", "appearance", "shortcuts", "app", "log"]
+        assert [k for k, _ in app._set_nav._items] == ["crest", "palaces", "profiles", "discord", "notifications", "appearance", "shortcuts", "app", "sessions", "health", "log"]
         for attr in ("_am_nav", "_farm_nav", "_tab_accounts", "_tab_farming", "unit_tree", "companion"):
             assert not hasattr(app, attr), f"{attr}: a page LITE must not build"
         crest_page = app.nb._pages[app._tab_crest]

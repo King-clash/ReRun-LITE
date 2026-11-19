@@ -51,3 +51,16 @@ def test_health_items(monkeypatch):
     assert titles["Recent errors"].state == "warn" and titles["config.yaml"].state == "warn"
     assert titles["Recent sessions"].state == "warn"
     assert h.worst(items) == "warn" and "WARN" in h.as_text(items)
+
+
+def test_a_log_line_about_a_saved_screen_loses_the_user_name_and_pictures_cannot_enter_a_bundle():
+    line = r"Crest: today is X. A picture of the screen was saved to C:\Users\Dandre\Documents\ReRun-LITE\debug\20261119_palace_not_found.png."
+    cleaned = d.redact_text(line)
+    assert "Dandre" not in cleaned and "<user>" in cleaned
+    z = zipfile.ZipFile(io.BytesIO(d.build_bundle({"log.txt": cleaned})))
+    assert z.namelist() == ["log.txt"]                                   # the bundle is built from text only
+    try:
+        d.build_bundle({"debug/shot.png": b"\x89PNG not text"})
+        raise AssertionError("a picture must not be accepted as a bundle part")
+    except (TypeError, AttributeError, ValueError):
+        pass

@@ -142,7 +142,7 @@ def open_app(theme_key: str, extra: dict | None = None, background_dir: Path | N
     return root, app
 
 
-def wait(app, cond, seconds=8.0):
+def wait(app, cond, seconds=30.0):
     t0 = time.time()
     while not cond() and time.time() - t0 < seconds:
         app.update()

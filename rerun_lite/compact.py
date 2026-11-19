@@ -13,7 +13,7 @@ from rerun.gui_common import *  # noqa: F401,F403 - tk, ios, C, F, px, errlog
 
 from rerun import qol
 
-from . import APP_NAME, phases, readiness
+from . import APP_NAME, phases
 from .compact_logic import PAUSABLE, compact_summary, pick_emulator, runs_text  # noqa: F401
 
 class CompactMixin:

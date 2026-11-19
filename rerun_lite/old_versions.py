@@ -301,13 +301,13 @@ class OldVersionsDialog(tk.Toplevel):
         cv = tk.Canvas(card.body, bg=C["card"], highlightthickness=0, bd=0, height=min(px(84) * len(found), px(380)))
         sb = tk.Scrollbar(card.body, orient="vertical", command=cv.yview)
         inner = tk.Frame(cv, bg=C["card"])
-        inner.bind("<Configure>", lambda e: cv.configure(scrollregion=cv.bbox("all")))
+        inner.bind("<Configure>", lambda e=None: cv.configure(scrollregion=cv.bbox("all")))
         cv.create_window((0, 0), window=inner, anchor="nw", width=px(540))
         cv.configure(yscrollcommand=sb.set)
         cv.pack(side="left", fill="both", expand=True)
         if len(found) * px(84) > px(380):
             sb.pack(side="right", fill="y")
-        self.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
+        self.bind("<MouseWheel>", lambda e=None: e is not None and cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
         for i, (o, var) in enumerate(zip(found, self.vars)):
             self._row(inner, o, var, divider=bool(i))
         self.summary = tk.Label(wrap, bg=C["bg"], fg=C["secondary"], font=F["footnote"], anchor="w")
@@ -328,7 +328,7 @@ class OldVersionsDialog(tk.Toplevel):
         self.geometry(f"{w}x{h}+{x}+{y}")
         self.minsize(px(560), h)
         self.after(50, lambda: ios.style_window(self) if hasattr(ios, "style_window") else None)
-        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Escape>", lambda e=None: self.destroy())
         self.grab_set()
 
     def _row(self, parent, o: Old, var: tk.BooleanVar, divider: bool):

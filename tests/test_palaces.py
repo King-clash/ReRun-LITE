@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import shutil
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import cv2
@@ -346,6 +346,524 @@ def test_a_confirm_button_is_found_by_its_text_and_tapped_when_there_is_no_ok():
     finally:
         engine.CrestScript.scrap = original
 
+
+
+class ScrollDevice:
+    """A device whose Crest Palace list scrolls: `pages` are the screens, each swipe moves one page."""
+
+    def __init__(self, pages):
+        self.pages, self.i, self.swipes = pages, 0, []
+
+    def swipe(self, x1, y1, x2, y2, ms=300):
+        self.swipes.append("down" if y2 < y1 else "up")
+        self.i = max(0, min(len(self.pages) - 1, self.i + (1 if y2 < y1 else -1)))
+
+
+def scrolling_rec(root, pages):
+    from types import SimpleNamespace
+    r = Rec(root)
+    dev = ScrollDevice(pages)
+    r.crest.ctx = SimpleNamespace(device=dev)
+    r.crest.sleep = lambda *a, **k: None
+    r.crest.grab = lambda: dev.pages[dev.i].copy()
+    r.tap_pages = []
+    r.crest.tap = lambda x, y, settle=0.6: (r.taps.append((x, y)), r.tap_pages.append(dev.i))
+    return r, dev
+
+
+def test_a_palace_below_the_fold_is_found_by_scrolling_and_tapped_where_it_was_found():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        top = shot.copy()
+        top[500:700] = 40                                                    # Whirlwind is not visible yet
+        r, dev = scrolling_rec(root, [top, shot])
+        assert r.run(top) and len(r.taps) == 1 and 520 < r.taps[0][1] < 680, r.taps
+        assert dev.swipes == ["down"] and r.tap_pages == [1], (dev.swipes, r.tap_pages)       # tapped while still scrolled
+        assert "scrolling 1 page" in r.logs[-1], r.logs
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_a_list_that_does_not_move_ends_the_search_and_runs_no_other_palace():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        top = shot.copy()
+        top[500:700] = 40
+        r, dev = scrolling_rec(root, [top])                                  # a swipe changes nothing: end of the list
+        assert not r.run(top) and not r.taps and dev.swipes == ["down"], (r.taps, dev.swipes)
+        assert "no other palace" in r.notes[-1] and "scrolled the list" in r.notes[-1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_a_missing_picture_falls_back_to_the_palace_name_read_from_the_screen():
+    from rerun import ocr as engine_ocr
+    try:
+        reader = engine_ocr.get_ocr()
+    except engine_ocr.OcrUnavailable:
+        print("skip: no text reader here")
+        return
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        (root / "images" / "shrine_of_whirlwind.png").unlink()               # no picture for today's palace
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        r = Rec(root)
+        assert not r.run(shot) and not r.taps                                # without a reader: stops, as before
+        assert "picture is missing" in r.notes[-1]
+        r.crest._ocr = reader
+        assert r.run(shot) and len(r.taps) == 1 and 520 < r.taps[0][1] < 680, (r.taps, r.notes)
+        assert "name read from the screen" in r.logs[-1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_in_the_hours_the_clocks_disagree_the_schedule_days_palace_is_a_second_choice_only():
+    from rerun.checklist import GAME_TZ
+    root, shot = palace_root()
+    try:
+        # 03:00 on the game clock = 09:00 UTC = 01:00 PST: the schedule screen is already on the next day.
+        in_window = datetime(2026, 11, 17, 3, 0, tzinfo=GAME_TZ)            # game day Monday, schedule screen Tuesday
+        outside = datetime(2026, 11, 16, 12, 0, tzinfo=GAME_TZ)             # Monday midday: both clocks say Monday
+        palaces.save_schedule(root, palaces.Schedule("weekday", {"Monday": "Shrine of Cursed Claw",
+                                                                  "Tuesday": "Shrine of Whirlwind"}))
+        alt = palaces.alt_choice(root, in_window)
+        assert alt is not None and alt.palace.name == "Shrine of Whirlwind" and alt.day == "Tuesday"
+        assert palaces.alt_choice(root, outside) is None                     # the two clocks agree: no second choice
+        assert palaces.alt_choice(root, datetime(2026, 11, 17, 6, 0, tzinfo=GAME_TZ)) is None  # the game day has turned over: they agree
+        assert palaces.choose(root, in_window).palace.name == "Shrine of Cursed Claw"   # the game day is still Monday
+        cut = shot.copy()
+        cut[330:490] = 40                                                    # Monday's palace is gone from the screen
+        r = Rec(root)
+        r.crest.CLOCK_NOW = lambda: in_window
+        assert r.run(cut) and len(r.taps) == 1 and 520 < r.taps[0][1] < 680, (r.taps, r.notes)
+        assert "next day" in r.logs[-1] and "Whirlwind" in r.logs[-1]
+        r.taps.clear()
+        r.crest._tile_taps = 0
+        r.crest.CLOCK_NOW = lambda: outside                                  # outside the window: stop, as before
+        assert not r.run(cut) and not r.taps and "no other palace" in r.notes[-1]
+        palaces.save_schedule(root, palaces.Schedule("off"))
+        assert palaces.alt_choice(root, in_window) is None
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_a_tile_that_never_opens_is_tapped_a_few_times_and_then_the_run_stops():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        r = Rec(root)
+        for _ in range(LiteCrest.TILE_TAP_LIMIT):
+            assert r.run(shot)                                               # the game keeps showing the same list
+        assert len(r.taps) == LiteCrest.TILE_TAP_LIMIT
+        assert not r.run(shot) and len(r.taps) == LiteCrest.TILE_TAP_LIMIT   # the next one stops instead of tapping again
+        assert "never left the Crest Palace screen" in r.notes[-1]
+        r.crest._tile_taps = 0                                               # reaching the quest list starts the count again
+        assert r.run(shot)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_a_banner_that_matches_no_palace_picture_is_found_by_its_place_in_the_stack():
+    from rerun_lite.crest import unknown_banners
+    root, shot = palace_root()                                       # pictures for Cursed Claw (y~410) and Whirlwind (y~600)
+    try:
+        def pics(*names):
+            return [(n, cv2.imread(str(root / "images" / f"{palaces.slug(n)}.png"))) for n in names]
+        both = unknown_banners(shot, pics("Shrine of Cursed Claw", "Shrine of Whirlwind"))
+        assert both and all(abs(y - 410) > 80 and abs(y - 600) > 80 for y in both), both          # only banners that are in neither
+        only_whirl = unknown_banners(shot, pics("Shrine of Whirlwind"))
+        assert any(abs(y - 410) < 50 for y in only_whirl) and not any(abs(y - 600) < 80 for y in only_whirl), only_whirl
+        assert unknown_banners(shot, pics()) == []                   # nothing known on the screen: no anchor, no guess
+        home = cv2.imread(str(ROOT / "tests" / "fixtures" / "home.png"))
+        assert unknown_banners(home, pics("Shrine of Cursed Claw", "Shrine of Whirlwind")) == []   # not the Crest Palace screen
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_crest_warns_once_in_the_log_about_a_banner_missing_from_the_list_and_still_opens_today():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        r = Rec(root)
+        assert r.run(shot) and len(r.taps) == 1, (r.taps, r.notes)                                # today's palace still opens
+        warned = [m for m in r.logs if "matches none of the pictures" in m]
+        assert warned, r.logs                                                                      # the other banners are not in this list
+        n = len(warned)
+        r.crest._tile_taps = 0
+        r.run(shot)
+        assert len([m for m in r.logs if "matches none of the pictures" in m]) == n               # said once each, not every time
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+def test_a_palace_that_is_nowhere_on_the_list_leaves_the_list_scrolled_back_to_the_top():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        top = shot.copy()
+        top[500:700] = 40
+        other = top.copy()
+        other[330:490] = 90                                                  # a different page, still without Whirlwind
+        r, dev = scrolling_rec(root, [top, other])
+        assert not r.run(top) and not r.taps and dev.i == 0, (r.taps, dev.i)
+        assert dev.swipes == ["down", "down", "up"], dev.swipes               # down, found the end, back up
+        assert "no other palace" in r.notes[-1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_the_second_choice_is_used_only_when_todays_palace_is_nowhere_on_the_list():
+    from rerun.checklist import GAME_TZ
+    root, shot = palace_root()
+    try:
+        in_window = datetime(2026, 11, 17, 3, 0, tzinfo=GAME_TZ)             # game day Monday, schedule screen already Tuesday
+        palaces.save_schedule(root, palaces.Schedule("weekday", {"Monday": "Shrine of Cursed Claw",
+                                                                  "Tuesday": "Shrine of Whirlwind"}))
+        page1 = shot.copy()
+        page1[330:490] = 40                                                  # Monday's palace is further down the list
+        page2 = shot.copy()
+        page2[520:680] = 40                                                  # (and the second choice is on the first page only)
+        r, dev = scrolling_rec(root, [page1, page2])
+        r.crest.CLOCK_NOW = lambda: in_window
+        assert r.run(page1) and len(r.taps) == 1, (r.taps, r.notes)
+        assert r.tap_pages == [1] and 330 < r.taps[0][1] < 490, (r.tap_pages, r.taps)   # Monday's palace, on the lower page
+        assert "next day" not in r.logs[-1]
+        r2, dev2 = scrolling_rec(root, [page1])                              # Monday's palace is nowhere: now the second choice
+        r2.crest.CLOCK_NOW = lambda: in_window
+        assert r2.run(page1) and 520 < r2.taps[0][1] < 680 and "next day" in r2.logs[-1], (r2.taps, r2.logs)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+
+def test_times_playable_is_read_from_the_real_temple_screen_and_not_from_other_screens():
+    from rerun import ocr as engine_ocr
+    from rerun_lite import palace_find as lc
+    try:
+        reader = engine_ocr.get_ocr()
+    except engine_ocr.OcrUnavailable:
+        print("skip: no text reader here")
+        return
+    fx = ROOT / "tests" / "fixtures"
+    assert lc.times_playable(reader, cv2.imread(str(fx / "live_temple_quest_list.png"))) == 3     # 'Times playable x3'
+    for other in ("live_frigidity_quest_list", "live_crest_palace_top", "live_schedule_crest_palace"):
+        assert lc.times_playable(reader, cv2.imread(str(fx / f"{other}.png"))) is None, other
+
+
+def test_a_palace_with_no_plays_left_stops_with_a_clear_message_and_otherwise_just_logs():
+    from rerun_lite import palace_find as lc
+    r = Rec(palace_root()[0])
+    r.crest._ocr = object()                                         # only its presence matters: the reading is replaced below
+    real = lc.times_playable
+    try:
+        lc.times_playable = lambda ocr, screen: 0
+        try:
+            r.crest._check_plays_left(None)
+            raise AssertionError("x0 must stop the run")
+        except Finished:
+            pass
+        assert "no plays left today" in r.notes[-1] and "4:00 AM PST" in r.notes[-1]
+        lc.times_playable = lambda ocr, screen: 2
+        r.crest._check_plays_left(None)
+        r.crest._check_plays_left(None)
+        assert [m for m in r.logs if "Plays left today" in m] == ["Plays left today in this palace: 2 (it resets at 4:00 AM PST)"]
+        n = len(r.notes)
+        lc.times_playable = lambda ocr, screen: None                # not read clearly: nothing happens
+        r.crest._check_plays_left(None)
+        lc.times_playable = lambda ocr, screen: (_ for _ in ()).throw(ValueError("bad frame"))
+        r.crest._check_plays_left(None)                             # a reading error never stops a run
+        assert len(r.notes) == n
+    finally:
+        lc.times_playable = real
+
+def test_a_stop_for_a_palace_not_found_keeps_a_picture_of_the_screen():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        palaces.save_schedule(root, palaces.Schedule("weekday", {today: "Shrine of Whirlwind"}))
+        blank = shot.copy()
+        blank[300:720] = 40
+        r = Rec(root)
+        saved = []
+        r.crest.save_frame = lambda tag, screen=None: (saved.append(tag), "C:/debug/x_palace_not_found.png")[1]
+        assert not r.run(blank) and saved == ["palace_not_found"]
+        assert "saved to C:/debug/x_palace_not_found.png" in r.notes[-1] and "no other palace" in r.notes[-1]
+        r.crest.save_frame = lambda tag, screen=None: (_ for _ in ()).throw(OSError("disk full"))
+        assert not r.run(blank) and "no other palace" in r.notes[-1] and "saved to" not in r.notes[-1]   # a save problem never hides the stop
+        r.crest._tile_taps = LiteCrest.TILE_TAP_LIMIT
+        r.crest.save_frame = lambda tag, screen=None: (saved.append(tag), "C:/debug/y.png")[1]
+        assert not r.run(shot) and saved[-1] == "palace_tile_stuck" and "saved to C:/debug/y.png" in r.notes[-1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+
+def test_the_games_schedule_screen_is_read_into_dated_palace_entries():
+    from rerun import ocr as engine_ocr
+    try:
+        reader = engine_ocr.get_ocr()
+    except engine_ocr.OcrUnavailable:
+        print("skip: no text reader here")
+        return
+    names = [p.name for p in palaces.read_list(ROOT)]
+    fx = ROOT / "tests" / "fixtures"
+
+    def entries(n):
+        img = cv2.imread(str(fx / n))
+        return palaces.parse_schedule(reader.screen_words(img, min_conf=40), names, 2026, today=date(2026, 11, 19))
+    first = entries("live_schedule_crest_palace.png")
+    got = [(str(e.date), e.name) for e in first]
+    assert ("2026-11-18", "Shrine of the Azul Knight") in got and ("2026-11-18", "Shrine of Frigidity") in got, got
+    assert ("2026-11-18", "Shrine of Diamond Dust") in got and ("2026-11-18", "Shrine of Effulgence") in got, got
+    azul = next(e for e in first if e.name == "Shrine of the Azul Knight")
+    assert azul.known and azul.start == "11/18 0:00" and azul.end == "11/18 23:59"           # a one-day slot, as the game shows it
+    eff = next(e for e in first if e.name == "Shrine of Effulgence")
+    assert eff.start == "11/17 18:00" and eff.end == "11/30 17:59"                            # the limited palace runs for days
+    second = {(str(e.date), e.name) for e in entries("live_schedule_crest_palace_2.png")}
+    assert {("2026-11-20", "Shrine of Adamantine"), ("2026-11-20", "Shrine of Caliginosity")} <= second, second
+    third = {(str(e.date), e.name) for e in entries("live_schedule_crest_palace_3.png")}      # the heading is on an earlier page:
+    assert {("2026-11-22", "Shrine of Discordia"), ("2026-11-22", "Shrine of Sagacity")} <= third, third   # the slot dates itself
+    odd = palaces.parse_schedule([], names, 2026, today=date(2026, 11, 19))
+    assert odd == []
+
+
+def test_a_palace_the_game_lists_but_the_list_lacks_is_marked_unknown_and_the_plan_is_checked_day_by_day():
+    from rerun.ocr import Word
+    names = ["Shrine of Perdition", "Shrine of Crimson Sea", "Shrine of Whirlwind"]
+
+    def row(y, text):
+        return [Word(t, 90.0, x, y, 70, 20) for t, x in zip(text.split(), (248, 323, 352, 420))]
+    words = [Word("11/23(MON)", 90.0, 5, 359, 130, 24), Word("Crest", 90.0, 140, 434, 40, 12), Word("Palace", 90.0, 188, 434, 50, 13)]
+    words += row(432, "Shrine of Subspace")
+    words += [Word("11/23", 90.0, 220, 468, 40, 14), Word("0:00", 90.0, 285, 465, 40, 25),
+              Word("11/23", 90.0, 220, 502, 40, 14), Word("23:59", 90.0, 285, 502, 40, 14)]
+    e = palaces.parse_schedule(words, names, 2026, today=date(2026, 11, 19))
+    assert len(e) == 1 and e[0].name == "Shrine of Subspace" and not e[0].known and e[0].date == date(2026, 11, 23), e
+    root, _shot = palace_root()
+    try:
+        palaces.save_schedule(root, palaces.Schedule("weekday", {"Monday": "Shrine of Whirlwind", "Tuesday": "Shrine of Whirlwind"}))
+        plan = palaces.plan_vs_schedule([e[0], palaces.SchedEntry(date(2026, 11, 24), "Shrine of Whirlwind", True, "11/24 0:00", "11/24 23:59")], root)
+        assert [(r["day"], r["ok"]) for r in plan] == [("Monday", False), ("Tuesday", True)], plan
+        palaces.save_schedule(root, palaces.Schedule("off"))
+        assert all(not r["ok"] and r["chosen"] is None for r in palaces.plan_vs_schedule(e, root))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_the_backup_palace_is_off_by_default_ordered_and_saved_with_the_schedule():
+    root, shot = palace_root()
+    try:
+        assert palaces.load_schedule(root).backup_on is False and palaces.load_schedule(root).backup == []
+        palaces.save_schedule(root, palaces.Schedule("weekday", {"Monday": "Shrine of Whirlwind"}, backup=["Shrine of Cursed Claw"]))
+        s = palaces.load_schedule(root)
+        assert s.backup == ["Shrine of Cursed Claw"] and s.backup_on is False
+        assert palaces.backup_choices(root) == []                               # a list alone does nothing: the switch is off
+        palaces.save_schedule(root, palaces.Schedule("weekday", {}, backup_on=True,
+                                                     backup=["Shrine of Cursed Claw", "No Such Palace", "Shrine of Whirlwind", "shrine of cursed claw"]))
+        got = [c.palace.name for c in palaces.backup_choices(root, {"Shrine of Whirlwind"})]
+        assert got == ["Shrine of Cursed Claw"], got                           # unknown names, the skipped one and repeats are dropped
+        assert all(c.day == "backup" for c in palaces.backup_choices(root))
+        palaces.save_schedule(root, palaces.Schedule("off", {}, backup_on=True, backup=["Shrine of Cursed Claw"]))
+        assert palaces.backup_choices(root) == []                               # selector off: no backups either
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_crest_runs_a_backup_palace_only_when_the_user_turned_it_on_and_says_so():
+    root, shot = palace_root()
+    try:
+        today = palaces.DAYS[palaces.game_date().weekday()]
+        gone = shot.copy()
+        gone[520:680] = 40                                                      # today's palace (Whirlwind) is not on the screen
+        week = {today: "Shrine of Whirlwind"}
+        palaces.save_schedule(root, palaces.Schedule("weekday", week, backup_on=False, backup=["Shrine of Cursed Claw"]))
+        r = Rec(root)
+        assert not r.run(gone) and not r.taps and "no other palace" in r.notes[-1]        # off: it stops, as always
+        palaces.save_schedule(root, palaces.Schedule("weekday", week, backup_on=True, backup=["Shrine of Perdition", "Shrine of Cursed Claw"]))
+        r = Rec(root)
+        assert r.run(gone) and len(r.taps) == 1 and 330 < r.taps[0][1] < 490, (r.taps, r.notes)   # Perdition has no picture: skipped
+        assert "BACKUP palace" in r.logs[-1] and "Shrine of Whirlwind" in r.logs[-1] and "Cursed Claw" in r.logs[-1]
+        assert any("backup palace" in n and "Cursed Claw" in n for n in r.notes)                  # and it tells you
+        r = Rec(root)
+        assert r.run(shot) and "BACKUP" not in r.logs[-1] and 520 < r.taps[0][1] < 680            # today's palace is on: no backup
+        nothing = shot.copy()
+        nothing[300:720] = 40
+        r = Rec(root)
+        assert not r.run(nothing) and not r.taps and "no other palace" in r.notes[-1]             # backups missing too: still stops
+        assert "also tried" in r.notes[-1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_the_settings_page_saves_the_backup_switch_and_names_and_flags_unknown_ones():
+    root, m, inst, app = open_lite()
+    try:
+        extra, _ = palace_root()
+        shutil.copytree(extra / "images", root / "images")
+        (root / "palaces.yaml").write_text("Shrine of Cursed Claw: images/shrine_of_cursed_claw.png\n"
+                                           "Shrine of Whirlwind: images/shrine_of_whirlwind.png\n", encoding="utf-8")
+        shutil.rmtree(extra, ignore_errors=True)
+        app._set_nav.select("palaces")
+        app.update()
+        assert "Run a backup palace" in " ".join(texts(app._set_pages["palaces"]))
+        assert app._pal_backup_on.get() is False
+        app._pal_mode.set(palaces.MODES["weekday"])
+        app._pal_backup_on.set(True)
+        app._pal_backup_var.set("Shrine of Whirlwind, Typo Palace")
+        app._pal_save()
+        s = palaces.load_schedule(root)
+        assert s.backup_on is True and s.backup == ["Shrine of Whirlwind", "Typo Palace"]
+        app._pal_save()                                                         # saving again from the page keeps them
+        assert palaces.load_schedule(root).backup_on is True
+        assert not app.errors, app.errors
+    finally:
+        close(app, root)
+
+
+def test_a_palace_is_added_with_its_picture_and_never_replaces_anything():
+    root, shot = palace_root()
+    try:
+        before = (root / "palaces.yaml").read_bytes()
+        pic = palaces.cut_banner(shot, 410)
+        assert pic.shape[0] > 100 and pic.shape[1] > 600                      # the banner, inside its frame
+        p = palaces.add_palace(root, "  Shrine   of Subspace ", pic)
+        assert p.name == "Shrine of Subspace" and p.image == "images/shrine_of_subspace.png"
+        assert (root / p.image).is_file() and palaces.find(palaces.read_list(root), "shrine of subspace") is not None
+        assert (root / "palaces.yaml").read_bytes().startswith(before)         # lines already there are untouched
+        for bad, why in (("Shrine of Subspace", "already in"), ("", "Give the palace a name"), ("Bad: name", "cannot contain"),
+                         ("# note", "cannot contain")):
+            try:
+                palaces.add_palace(root, bad, pic)
+                raise AssertionError(bad)
+            except ValueError as e:
+                assert why in str(e), (bad, str(e))
+        (root / "images" / "shrine_of_new.png").write_bytes(b"keep me")        # a picture of that name already exists
+        try:
+            palaces.add_palace(root, "Shrine of New", pic)
+            raise AssertionError("must not replace a picture")
+        except ValueError as e:
+            assert "already exists" in str(e)
+        assert (root / "images" / "shrine_of_new.png").read_bytes() == b"keep me"
+        assert palaces.find(palaces.read_list(root), "Shrine of New") is None   # and no line was added for it
+        try:
+            palaces.add_palace(root, "Shrine of Nothing", None)
+            raise AssertionError("no picture")
+        except ValueError:
+            pass
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_added_palaces_follow_the_files_line_endings_and_a_missing_list_is_started():
+    root, shot = palace_root()
+    try:
+        crlf = chr(13) + chr(10)
+        (root / "palaces.yaml").write_bytes(("Shrine of Whirlwind: images/shrine_of_whirlwind.png" + crlf).encode())
+        palaces.add_palace(root, "Shrine of Subspace", palaces.cut_banner(shot, 410))
+        raw = (root / "palaces.yaml").read_bytes().decode()
+        assert raw == ("Shrine of Whirlwind: images/shrine_of_whirlwind.png" + crlf + "Shrine of Subspace: images/shrine_of_subspace.png" + crlf)
+        (root / "palaces.yaml").write_bytes(b"Shrine of Whirlwind: images/shrine_of_whirlwind.png")       # no line ending at the end
+        palaces.add_palace(root, "Shrine of Oblivion", palaces.cut_banner(shot, 410))
+        assert [p.name for p in palaces.read_list(root)] == ["Shrine of Whirlwind", "Shrine of Oblivion"]
+        (root / "palaces.yaml").unlink()
+        palaces.add_palace(root, "Shrine of Eternity", palaces.cut_banner(shot, 410))
+        assert [p.name for p in palaces.read_list(root)] == ["Shrine of Eternity"]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_the_settings_buttons_check_the_screen_and_add_the_missing_palace_from_it():
+    import cv2
+    from rerun import ios
+    root, m, inst, app = open_lite()
+    shown, asked = [], []
+    real_alert, real_ask = ios.alert, ios.ask_string
+    try:
+        fx = ROOT / "tests" / "fixtures"
+        screen = cv2.imread(str(fx / "live_crest_palace_top.png"))               # Effulgence, Frigidity, Diamond Dust, Azul Knight
+        (root / "images").mkdir(exist_ok=True)
+        lines = []
+        for name in ("Shrine of Frigidity", "Shrine of Diamond Dust", "Shrine of the Azul Knight"):
+            slug = palaces.slug(name)
+            shutil.copy(ROOT / "images" / f"{slug}.png", root / "images" / f"{slug}.png")
+            lines.append(f"{name}: images/{slug}.png")
+        (root / "palaces.yaml").write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+        ios.alert = lambda parent, message, title="Rerun": shown.append(message)
+        ios.ask_string = lambda parent, title, message, initial="": (asked.append(message), "Shrine of Effulgence")[1]
+        app._pal_sync = True
+        m.screenshot = lambda name: screen
+        app._set_nav.select("palaces")
+        app.update()
+        assert "Check the Crest Palace screen" in " ".join(texts(app._set_pages["palaces"]))
+        app._pal_check_now()
+        assert "Shrine of Frigidity" in shown[-1] and "Shrine of Diamond Dust" in shown[-1] and "1 banner(s) match none" in shown[-1], shown
+        shown.clear()
+        app._pal_add_from_screen()
+        assert asked and "matches none of your palaces" in asked[-1], asked
+        assert (root / "images" / "shrine_of_effulgence.png").is_file()
+        assert palaces.find(palaces.read_list(root), "Shrine of Effulgence") is not None
+        app.update()
+        app._pal_check_now()
+        assert "Shrine of Effulgence" in shown[-1] and "match none" not in shown[-1], shown      # now it is recognised
+        n = len(asked)
+        app._pal_add_from_screen()
+        assert len(asked) == n and "matches a picture in your list" in shown[-1], shown[-1]      # nothing left to add
+        m.screenshot = lambda name: (_ for _ in ()).throw(OSError("device offline"))
+        app._pal_check_now()
+        assert "Could not get a screenshot" in shown[-1] and "device offline" in shown[-1]
+        m.screenshot = lambda name: np.full((1280, 720, 3), 30, np.uint8)
+        app._pal_check_now()
+        assert "None of your palaces is on this screen" in shown[-1]
+        assert not app.errors, app.errors
+    finally:
+        ios.alert, ios.ask_string = real_alert, real_ask
+        close(app, root)
+
+
+def test_the_fast_two_pass_search_gives_the_same_answer_as_the_exact_one():
+    from rerun_lite.crest import MATCH_MIN, find_tile, find_tile_exact
+    fx = ROOT / "tests" / "fixtures"
+    names = ["Shrine of Frigidity", "Shrine of the Azul Knight", "Temple of Heavenly Light", "Shrine of Effulgence", "Shrine of Whirlwind"]
+    pics = {n: cv2.imread(str(ROOT / "images" / f"{palaces.slug(n)}.png")) for n in names}
+    for f in ("live_crest_palace_top.png", "live_crest_palace_scrolled.png", "crest_palace_list.png"):
+        screen = cv2.imread(str(fx / f))
+        for n, pic in pics.items():
+            exact, fast = find_tile_exact(screen, pic), find_tile(screen, pic)
+            assert abs(exact[0] - fast[0]) < 0.03, (f, n, exact, fast)
+            assert (exact[0] >= MATCH_MIN) == (fast[0] >= MATCH_MIN), (f, n, exact, fast)       # the same yes or no
+            if exact[0] >= MATCH_MIN:
+                assert abs(exact[1] - fast[1]) <= 3 and abs(exact[2] - fast[2]) <= 3, (f, n, exact, fast)   # on the same spot
+    assert find_tile(np.zeros((100, 100, 3), np.uint8), pics["Shrine of Frigidity"])[0] == 0.0   # a picture that cannot fit
+
+
+def test_a_misread_heading_does_not_misdate_a_one_day_slot_and_an_implausible_one_is_ignored():
+    from rerun.ocr import Word
+    names = ["Shrine of Eternity", "Shrine of Effulgence"]
+
+    def entry(y, name, start, end, sh, eh):
+        w = [Word("Crest", 90.0, 140, y, 40, 12), Word("Palace", 90.0, 188, y, 50, 13)]
+        w += [Word(t, 90.0, 248 + 60 * i, y - 2, 60, 18) for i, t in enumerate(name.split())]
+        w += [Word(start.split()[0], 90.0, 220, y + 34, 40, 14), Word(sh, 90.0, 285, y + 32, 40, 25),
+              Word(end.split()[0], 90.0, 220, y + 68, 40, 14), Word(eh, 90.0, 285, y + 68, 40, 14)]
+        return w
+    words = [Word("1/19(THU)", 90.0, 5, 359, 130, 24)]                                 # the big heading lost a digit: 11/19 read as 1/19
+    words += entry(432, "Shrine of Eternity", "11/19 0:00", "11/19 23:59", "0:00", "23:59")
+    words += entry(573, "Shrine of Effulgence", "11/17 18:00", "11/30 17:59", "18:00", "17:59")   # a long slot: only the heading dates it
+    got = palaces.parse_schedule(words, names, today=date(2026, 11, 19))
+    eternity = next(e for e in got if e.name == "Shrine of Eternity")
+    assert eternity.date == date(2026, 11, 19), eternity                                # dated by its own start and end, not the heading
+    eff = next(e for e in got if e.name == "Shrine of Effulgence")
+    assert eff.date is None, eff                                                         # a heading of 1/19 is not a believable date
+    words[0] = Word("11/19(THU)", 90.0, 5, 359, 130, 24)
+    eff = next(e for e in palaces.parse_schedule(words, names, today=date(2026, 11, 19)) if e.name == "Shrine of Effulgence")
+    assert eff.date == date(2026, 11, 19)                                                # a good heading dates the long slot
 
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_") and callable(v)]
