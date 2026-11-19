@@ -154,6 +154,40 @@ that palace instead of one tile you captured by hand.
   GS Companion banners are not the game's own pixels). If the picture file is missing, nothing is chosen for today,
   or that palace is not on the screen (palaces rotate; the cycle does not know which days a palace is open), Crest
   stops and says which palace and which file. It never opens a different one.
+- **Safeguards, so a good day is not lost to a small problem.** Before Crest gives up on today's palace it tries, in
+  this order: the picture; the palace's name read from the screen (so a missing or out-of-date picture is not fatal,
+  as long as the text reader is installed); a fresh look at the screen (twice, in case it was mid-animation); and
+  scrolling the list down up to three pages (the fifth palace sits below the fold; the list is scrolled back up
+  afterwards, and a list that does not move ends the search). If it taps a palace tile four times and the game
+  never leaves the Crest Palace screen (a popup on top, say), it stops and says so instead of tapping for ever.
+- **A warning for a palace that is not in your list.** When the Crest Palace screen shows a whole banner that matches
+  none of the pictures in `palaces.yaml` (a new or limited-time palace, like Shrine of Effulgence was), the Log says so
+  once per run. It looks at where the banner sits in the stack and how detailed it is, not at its text, so it needs at
+  least one palace from your list on the screen to measure from. It never stops or changes anything. The same check runs
+  in `py tools/template_health.py --palaces`.
+- **Plays left.** The Temple of Heavenly Light's quest list says "Times playable x3, resets at 4:00 AM PST". When a palace
+  shows that line, the Log says how many plays are left, and at x0 Crest stops with a clear message instead of starting a
+  run the game will refuse. A count that is not read clearly is ignored.
+- **A picture kept when it stops.** If Crest stops because today's palace is not on the screen, or a tile will not open,
+  it saves the screen to the debug folder and puts the path in the message, so you can see what it saw.
+- **Backup palaces (off by default).** Settings > Palace Selector > *If today's palace is not on the screen*: turn on
+  *Run a backup palace* and list palaces in order. Only when today's palace is nowhere on the Crest Palace screen does Crest
+  try them, and it runs the first one it finds. The Log and a Discord message say a backup was used. Off, Crest stops and runs
+  no other palace, as before.
+- **Read the game's schedule** (same page, *Read…*). Opens Exploring > Schedule on the selected emulator, reads about a week of
+  palaces, puts the schedule's filter buttons back as it found them, closes the window, and tells you which day's chosen palace is
+  not open that day, and which palaces are on the game's schedule but not in your list. It asks first, refuses while Crest is
+  running, and taps only menus: it starts, buys and changes nothing on the account. Details of what the game lists:
+  [docs/PALACES.md](docs/PALACES.md).
+- **Check the game now / Add from screen** (same page). *Check now* takes one screenshot of the selected emulator and says
+  which of your palaces are on it and whether today's is. *Add from screen…* cuts the picture of a banner that matches none of
+  your palaces out of that screenshot and adds it to `palaces.yaml` under the name you type (it never replaces a picture or a
+  line). Nothing is tapped.
+- **One second choice, only in a four-hour window.** The game's own schedule screen starts each palace day at 0:00 PST
+  (08:00 UTC), four hours before the 06:00 UTC-6 game day. Which clock the palaces really follow has not been
+  confirmed. In those four hours (08:00 to 12:00 UTC), if today's palace is not found, Crest also looks for the
+  palace the schedule gives for the schedule's day, and says so in the Log. At any other time, or when neither is
+  found, it still stops and runs no other palace.
 - `palaces.yaml` and `images/` are game art and your own data, so they are not part of the repository.
 
 ## What is not in it
@@ -199,14 +233,23 @@ it LITE:
   shortcuts, pin, the Window & files group), `extras.py` (Start/Stop button, sound, remembered emulator, today's
   palace), `palettes.py` (the themes as data), `background.py` (the video background and its settings), `upscale.py` (enlarging small videos) and `state.py` (window memory in
   `data/lite/ui.json`).
-- `palaces.py` (the list, the day rule, the import) and `crest.py` (Crest with the selector).
+- `palaces.py` (the list, the day rule, the import, backups, adding a palace, reading the schedule text), `crest.py` (Crest
+  with the selector: which palace to look for and the tap), `palace_find.py` (finding it on the screen: the fast picture search,
+  the name fallback, scrolling, the plays-left and new-banner checks) and `schedule_reader.py` (reading the game's own palace
+  schedule, behind the Settings button and `tools/palace_schedule.py`).
 - `readiness.py` - the local "is it ready?" checks behind the chip, badges and the setup strip.
 - `theme.py` - the look (palette, outlined cards, the brand top bar, the grouped Settings list, tooltips), applied
   at run time so `rerun/` stays exactly as copied.
 - `channel.py` - the update channel; `content.py` - the templates LITE ships; `bot.py`, `tray.py`, `icon.py` - the
   Discord bot, tray icon and icon.
 - `lite_main.py` (entry point), `build_lite.py` and `build.py` (build), `tools/` (build log, update site, the
-  background and how-to video makers), `tests/` (`py tests/test_lite.py`, `py tests/test_palaces.py`).
+  background and how-to video makers, `template_health.py` to check the pictures against screenshots,
+  `palace_schedule.py` to read the game's own palace schedule), `tests/` (`py tests/test_lite.py`,
+  `py tests/test_palaces.py`, `py tests/test_template_health.py`, `py tests/test_popups.py`; or all of them with
+  `py -m pytest tests`). **Before a release run `Run checks.bat`** (`py tools/run_checks.py`): lint, every test and a trial
+  build with its self-test, with a plain PASS or FAIL for each. Leave the mouse and keyboard alone while it runs. (The window
+  tests retry when Windows briefly refuses to hand over one of Tk's own files, and wait longer when the PC is busy.) The `live_*` pictures in `tests/fixtures/` are real game screens with the account name and rank
+  covered.
 
 The copy of `rerun/` is not kept in step with ReRun automatically. A fix made there has to be brought over by hand.
 
@@ -216,8 +259,23 @@ The copy of `rerun/` is not kept in step with ReRun automatically. A fix made th
   stop, unknown crest, dry run), the palace selector (game-day clock, weekday and cycle choices, never opening
   another palace, the import never overwriting), the video background (it plays behind the window, follows it and
   switches off), the status and extras, the window, and the update channel against a local server. Every test passes.
-- **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window. Crest itself
-  is the script that was verified live in ReRun.
+- **Checked against the real game (2026-11-19, game version 4.1.2, screenshots only, nothing was run):** the pictures
+  Crest uses to find the title screen, the Home screen's Exploring button, the Crest Palace entry on the Exploring
+  screen and the Crest Palace header all matched a live BlueStacks screen (scores 0.96 to 1.00, needing 0.80). The
+  palace selector's pictures found four of the five palaces that were open (0.79 to 0.90, needing 0.62). The fifth,
+  Shrine of Effulgence, was not in the palace list, so its picture was added from the live screen. Run
+  `py tools/template_health.py` (and `--palaces` on a Crest Palace screenshot, or `--live --palaces` with the game
+  on the Crest Palace screen) to repeat this after a game update; it only reads files and asks the emulator for a
+  screenshot, nothing is tapped. A palace can only be checked on a day it is open, so each palace gets checked as
+  its day comes round. `py tools/palace_schedule.py` reads the game's own *Exploring > Schedule* (it puts the filter
+  buttons back as they were) and checks the selector's choice for each day against what the game lists: on 2026-11-19 the
+  choice for each of 11/18 to 11/24 was open that day. It also showed a palace that is on the Global schedule but not in
+  `palaces.yaml`: **Shrine of Subspace** (Monday 11/23), which needs a picture when it is open (use *Add from screen…*).
+  The schedule starts each palace day at 0:00 PST, but the Temple of Heavenly Light's own counter says it resets at 4:00 AM PST,
+  which is the 06:00 UTC-6 reset LITE uses.
+- **Not checked on the real game:** LITE as a whole has not been run against a live BlueStacks window (the Crest loop,
+  the Equip Crest screen and the scrap or keep decisions were not run). Crest itself is the script that was verified
+  live in ReRun.
 - **Not done:** no LITE update or release has been published yet. The exe is not code-signed, so Microsoft Defender
   may complain.
 - **Sign-in and update signing use ReRun's key system.** The sign-in keys and the update signature come from the
